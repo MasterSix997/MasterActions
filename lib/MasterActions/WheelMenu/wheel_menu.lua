@@ -1,3 +1,5 @@
+local MAX_ITENS_PER_PAGE = 5
+
 local Menu = {}
 Menu.__index = Menu
 
@@ -7,6 +9,7 @@ function Menu:new(name, parent)
     instance.parent = parent or nil
     instance.children = {}
     instance.selectedIndex = 1
+    instance.currentPage = 1
     return instance
 end
 
@@ -17,6 +20,7 @@ function Menu:addMenu(name)
 end
 
 function Menu:enter(index)
+    index = index + ((self.currentPage - 1) * MAX_ITENS_PER_PAGE)
     local child = self.children[index]
     if child then
         if #child.children > 0 then
@@ -35,6 +39,32 @@ function Menu:up()
     else
         -- É o root
         return self
+    end
+end
+
+function Menu:pageCount()
+    return math.ceil(#self.children / MAX_ITENS_PER_PAGE)
+end
+
+function Menu:pageItens()
+    local start_indice = (self.currentPage - 1) * MAX_ITENS_PER_PAGE + 1
+    local end_indice = MAX_ITENS_PER_PAGE * self.currentPage
+
+    if self:pageCount() == 1 then
+        return self.children
+    else
+        return {table.unpack(self.children, start_indice, end_indice)}
+    end
+end
+
+function Menu:pageItensCount()
+    if self:pageCount() == 1 then
+        return #self.children
+    else
+        local start_indice = (self.currentPage - 1) * MAX_ITENS_PER_PAGE
+        local end_indice = MAX_ITENS_PER_PAGE * self.currentPage
+        end_indice = math.min(end_indice, #self.children)
+        return end_indice - start_indice
     end
 end
 
