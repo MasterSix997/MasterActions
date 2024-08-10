@@ -214,7 +214,7 @@ function menu.create_wheel_data(data)
 end
 
 function menu.draw_wheel_menu(cx, cy, outerRadius, innerRadius, circleSegments, data, selectedSlice, minSliceSize)
-    if not data or not data.isCreated then
+    if not data then
         return
     end
 
@@ -325,17 +325,93 @@ function menu.slice_in_position(cx, cy, outerRadius, innerRadius, total_slices, 
     return nil
 end
 
+function menu.draw_page_informations(data, textX, textY, radius, scale, color)
+    local midAngle = 4.7
 
-function menu.show_cursor_on_screen()
-    HUD.SET_MOUSE_CURSOR_THIS_FRAME()
-    PAD.DISABLE_CONTROL_ACTION(2, 25, true) --aim
-    PAD.DISABLE_CONTROL_ACTION(2, 24, true) --attack
-    PAD.DISABLE_CONTROL_ACTION(2, 257, true) --attack2
-    if PAD.IS_DISABLED_CONTROL_PRESSED(2, 25) then return true end
+    local screenWidth, screen_height = directx.get_client_size()
+    local aspectRatio = screenWidth / screen_height
 
-    PAD.DISABLE_CONTROL_ACTION(2, 1, true) --look lr
-    PAD.DISABLE_CONTROL_ACTION(2, 2, true) --look ud
-    return false
+    textX = textX + radius * math.cos(midAngle)-- / aspectRatio
+    textY = textY + radius * math.sin(midAngle) * aspectRatio
+
+    directx.draw_text_client(
+        textX, textY, -- X, Y
+        data.currentPage .. "/" .. data:pageCount(), -- text
+        5, -- align
+        scale or 0.6, -- scale 
+        color or {					-- colour
+            ["r"] = 1.0,
+            ["g"] = 1.0,
+            ["b"] = 1.0,
+            ["a"] = 1.0
+        },
+        false, -- force_in_bounds 
+        nil -- font 
+    )
+end
+
+function menu.page_buttons(previous_enabled, next_enabled, center_x, center_y, radius, size, color)
+    local screen_width, screen_height = directx.get_client_size()
+    local aspectRatio = screen_width / screen_height
+
+    local size_y = size * aspectRatio
+
+    ---------------- INPUT CHECK ----------------
+    local selected = 0
+
+    local left_x_min = (center_x - size / 2) - radius
+    local left_x_max = left_x_min + size
+    local right_x_min = (center_x - size / 2) + radius
+    local right_x_max = right_x_min + size
+    local y_min = center_y - size_y / 2
+    local y_max = y_min + size_y
+
+    local px, py = PAD.GET_DISABLED_CONTROL_NORMAL(2, 239), PAD.GET_DISABLED_CONTROL_NORMAL(2, 240)
+
+    if px >= left_x_min and px <= left_x_max and py >= y_min and py <= y_max then
+        selected = -1
+    end
+
+    if px >= right_x_min and px <= right_x_max and py >= y_min and py <= y_max then
+        selected = 1
+    end
+
+    ---------------- DRAW ----------------
+    local center_x = center_x - size / 2
+    local center_y = center_y - size_y / 2
+
+    color = color or {["r"] = 1.0, ["g"] = 1.0, ["b"] = 1.0, ["a"] = 0.8}
+    local selected_color = {["r"] = 1.0, ["g"] = 1.0, ["b"] = 0.0, ["a"] = 0.8}
+    local disabled_color = {["r"] = 1.0, ["g"] = 1.0, ["b"] = 1.0, ["a"] = 0.1}
+
+    local left_color = color
+    local right_color = color
+    
+    if previous_enabled and selected == -1 then
+        left_color = selected_color
+    elseif not previous_enabled then
+        left_color = disabled_color
+    end
+
+    if next_enabled and selected == 1 then
+        right_color = selected_color
+    elseif not next_enabled then
+        right_color = disabled_color
+    end
+
+    directx.draw_rect_client(
+        center_x - radius, center_y,
+        size, size_y,
+        left_color
+    )
+
+    directx.draw_rect_client(
+        center_x + radius, center_y,
+        size, size_y,
+        right_color
+    )
+
+    return selected
 end
 
 return menu

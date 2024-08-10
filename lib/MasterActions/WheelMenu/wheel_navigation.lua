@@ -1,4 +1,4 @@
-local MAX_ITENS_PER_PAGE = 5
+local MAX_ITENS_PER_PAGE = 15
 
 local Menu = {}
 Menu.__index = Menu
@@ -10,6 +10,10 @@ function Menu:new(name, parent)
     instance.children = {}
     instance.selectedIndex = 1
     instance.currentPage = 1
+
+    instance.isText = true
+    instance.text = name
+    --instance.textColor = 
     return instance
 end
 
@@ -42,10 +46,12 @@ function Menu:up()
     end
 end
 
+-- Count of pages
 function Menu:pageCount()
     return math.ceil(#self.children / MAX_ITENS_PER_PAGE)
 end
 
+-- Get current page itens
 function Menu:pageItens()
     local start_indice = (self.currentPage - 1) * MAX_ITENS_PER_PAGE + 1
     local end_indice = MAX_ITENS_PER_PAGE * self.currentPage
@@ -57,6 +63,7 @@ function Menu:pageItens()
     end
 end
 
+-- Number of items on current page
 function Menu:pageItensCount()
     if self:pageCount() == 1 then
         return #self.children
@@ -74,7 +81,11 @@ local WheelMenu = {}
 local root = Menu:new("root")
 local current_menu = root
 
-function WheelMenu.current()
+function WheelMenu:root()
+    return root
+end
+
+function WheelMenu:current()
     return current_menu
 end
 
@@ -98,6 +109,20 @@ end
 function WheelMenu:up()
     current_menu = current_menu:up()
     return current_menu
+end
+
+function WheelMenu:page_left()
+    if current_menu.currentPage > 1 then
+        current_menu.currentPage = current_menu.currentPage - 1
+        current_menu.selectedIndex = 1
+    end
+end
+
+function WheelMenu:page_right()
+    if current_menu.currentPage < current_menu:pageCount() then
+        current_menu.currentPage = current_menu.currentPage + 1
+        current_menu.selectedIndex = 1
+    end
 end
 
 local function up_recursive(menu, action)
