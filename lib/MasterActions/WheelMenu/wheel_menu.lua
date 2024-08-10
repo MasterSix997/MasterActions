@@ -48,9 +48,9 @@ local function calculate_selected_slice()
     local is_in_controller = not PAD.IS_USING_KEYBOARD_AND_MOUSE(2)
 
     if is_in_controller then
-        selected_slice = wheel_render.slice_in_analog_position(#current_data, selected_slice, 0)
+        selected_slice = wheel_render.slice_in_analog_position(#current_data)
     else
-        selected_slice = wheel_render.slice_in_mouse_position(wheel.settings.center_x, wheel.settings.center_y, wheel.settings.select_even_outside_the_wheel and 1 or wheel.settings.outer_radius, wheel.settings.inner_radius, #current_data, selected_slice, 0)
+        selected_slice = wheel_render.slice_in_mouse_position(wheel.settings.center_x, wheel.settings.center_y, wheel.settings.select_even_outside_the_wheel and 1 or wheel.settings.outer_radius, wheel.settings.inner_radius, #current_data)
     end
 
     if selected_slice and selected_slice > 0 then

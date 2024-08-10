@@ -11,6 +11,7 @@ function Menu:new(name, parent)
     instance.selectedIndex = 1
     instance.currentPage = 1
 
+    instance.isFolder = true
     instance.isText = true
     instance.text = name
     --instance.textColor = 
