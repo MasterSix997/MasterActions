@@ -18,7 +18,12 @@ test3:addMenu("Massive 8")
 test3:addMenu("Massive 9")
 test3:addMenu("Massive 10")
 test3:addMenu("Massive 11")
-test3:addMenu("Massive 12"):addMenu("Hey")
+local test3_massive12 = test3:addMenu("Massive 12")
+test3_massive12:addMenu("HAHAH 1")
+test3_massive12:addMenu("HAHAH 2")
+local test3_massive12_hey = test3_massive12:addMenu("Hey")
+test3_massive12:addMenu("HAHAH 3")
+test3_massive12:addMenu("HAHAH 4")
 test3:addMenu("Massive 13")
 test3:addMenu("Massive 14")
 test3:addMenu("Massive 15")
@@ -86,6 +91,11 @@ menu:my_root():action("Page Left", {}, "", function ()
         current.currentPage = current.currentPage - 1
         current.selectedIndex = 1
     end
+    update_log()
+end)
+
+menu:my_root():action("Focus", {}, "", function ()
+    wheel:focus(test3_massive12_hey)
     update_log()
 end)
 
