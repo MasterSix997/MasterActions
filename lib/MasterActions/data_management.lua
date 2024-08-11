@@ -1,8 +1,8 @@
 local json = require("json")
 
 local default_settings = {
-    language = "en-us",
-    dev_mode = false
+    language = "pt-br",
+    dev_mode = true
 }
 local default_folder = filesystem.store_dir() .. "\\MasterActions\\"
 
