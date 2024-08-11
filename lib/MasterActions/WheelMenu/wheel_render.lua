@@ -55,10 +55,10 @@ local function DrawCircleSlice(cx, cy, outerRadius, innerRadius, segments, total
         angle = angle + angleStep
     end
     directx.draw_line_client(
-        cx + outerRadius * math.cos(angle),
-        cy + outerRadius * math.sin(angle) * aspectRatio,
+        cx + (outerRadius) * math.cos(angle),
+        cy + (outerRadius) * math.sin(angle) * aspectRatio,
         cx + innerRadius * math.cos(angle),
-        cy + innerRadius * math.sin(angle) * aspectRatio, 1, 1, 1, 1
+        cy + innerRadius * math.sin(angle) * aspectRatio, 1, 1, 1, 0.4
     )
 end
 
@@ -177,9 +177,12 @@ function menu.draw_wheel_menu(cx, cy, outerRadius, innerRadius, circleSegments, 
         outerRadius + 0.003, outerRadius,
         slices,
         circleSegments,
-        {["r"] = 0.1, ["g"] = 0.1, ["b"] = 0.1, ["a"] = 0.9}
-        --selectedSlice
+        {["r"] = 0.1, ["g"] = 0.1, ["b"] = 0.1, ["a"] = 0.9},
+        selectedSlice
     )
+    if selectedSlice and selectedSlice > 0 then
+        DrawCircleSlice(cx, cy, outerRadius + 0.003, outerRadius, math.ceil(circleSegments / slices), slices, selectedSlice, 1, 1, 1, 0.6)
+    end
 
     if selectedSlice == 0 then
         DrawCircle(cx, cy, 0.01 + 0.005, 0, circleSegments, 1, 1, 0, 0.6)
