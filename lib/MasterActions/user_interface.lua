@@ -1,4 +1,4 @@
---require("lib/MasterActions/translations")
+local editor_ui = require("lib.MasterActions.ui_editor_mode")
 
 local ui = {}
 
@@ -27,10 +27,12 @@ function ui.create_interface()
         data.SaveSettings()
     end)
 
-    settings_menu.my_root():toggle(Translation.menu.name_settings_dev_mode, {}, Translation.menu.description_settings_dev_mode, function(value)
+    settings_menu:toggle(Translation.menu.name_settings_dev_mode, {}, Translation.menu.description_settings_dev_mode, function(value)
         data.settings.dev_mode = value
         data.SaveSettings()
     end, data.settings.dev_mode)
+
+    editor_ui.create_editor_interface()
 end
 
 return ui
