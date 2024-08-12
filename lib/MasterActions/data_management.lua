@@ -1,4 +1,4 @@
-local json = require("json")
+local json = require("pretty.json")
 
 local default_settings = {
     language = "pt-br",
@@ -83,7 +83,7 @@ local function writeToFile(filename, data)
         util.toast("Failed to write to " .. filename)
       return false
     end
-    file:write(json.encode(data))
+    file:write(json.stringify(data, nil, 4))
     file:close()
     return true
 end
@@ -96,7 +96,7 @@ local function readFromFile(filename)
     end
     local content = file:read("*all")
     file:close()
-    return json.decode(content)
+    return json.parse(content)
 end
 
 local function CreateFileIfNeed(filename, default_data)
@@ -122,11 +122,13 @@ function MasterData.LoadAllActions()
 
     for index, file in ipairs(filesystem.list_files(actions_folder)) do
         if not filesystem.is_dir(file) then
-            local file_name = string.sub(file, #actions_folder + 1, #file)
-            local file_actions = {file_name = file_name}
-            file_actions.actions = readFromFile("Actions\\" .. file_name)
-            if file_actions.actions then
-                table.insert(MasterData.actions_files, file_actions)
+            local file_name = string.sub(file, #actions_folder + 1, #file - 5)
+            if string.sub(file, #file - 4, #file) == ".json" then
+                local file_actions = {file_name = file_name}
+                file_actions.actions = readFromFile("Actions\\" .. file_name .. ".json")
+                if file_actions.actions then
+                    table.insert(MasterData.actions_files, file_actions)
+                end
             end
         end
     end
@@ -137,12 +139,12 @@ function MasterData.LoadActionFile(filename)
         filesystem.mkdirs(actions_folder)
         writeToFile("Actions\\" .. "Default_Actions.json", default_actions)
     end
-    if not filesystem.exists(actions_folder .. filename) then
+    if not filesystem.exists(actions_folder .. filename .. ".json") then
         return nil
     end
     
     local file_actions = {file_name = filename}
-    file_actions.actions = readFromFile("Actions\\" .. filename)
+    file_actions.actions = readFromFile("Actions\\" .. filename .. ".json")
     if file_actions.actions then
         for index, stored_file in ipairs(MasterData.actions_files) do
             if stored_file.file_name == file_actions.file_name then
@@ -159,7 +161,7 @@ end
 function MasterData.SaveActionFile(filename)
     for index, stored_file in ipairs(MasterData.actions_files) do
         if stored_file.file_name == filename then
-            writeToFile("Actions\\" .. filename, stored_file.actions)
+            writeToFile("Actions\\" .. filename .. ".json", stored_file.actions)
         end
     end
 end
@@ -167,7 +169,7 @@ end
 function MasterData.DeleteActionFile(filename)
     for index, stored_file in ipairs(MasterData.actions_files) do
         if stored_file.file_name == filename then
-            os.remove(actions_folder .. filename)
+            os.remove(actions_folder .. filename .. ".json")
             table.remove(MasterData.actions_files, index)
         end
     end
@@ -176,7 +178,7 @@ end
 function MasterData.RenameActionFile(filename, new_name)
     for index, stored_file in ipairs(MasterData.actions_files) do
         if stored_file.file_name == filename then
-            os.rename(actions_folder .. filename, actions_folder .. new_name)
+            os.rename(actions_folder .. filename .. ".json", actions_folder .. new_name .. ".json")
             MasterData.actions_files[index].file_name = new_name
         end
     end

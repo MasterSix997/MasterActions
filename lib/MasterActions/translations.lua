@@ -13,6 +13,7 @@ Translation = {
         name_add_file = "",
         name_delete_file = "",
         name_add_action = "",
+        name_add_group = "",
         name_current_action = "",
         name_current_group = "",
         name_delete_action = "",
@@ -55,6 +56,7 @@ local function lang_pt()
             name_add_file = "Adicionar arquivo",
             name_delete_file = "Deletar arquivo",
             name_add_action = "Adicionar ação",
+            name_add_group = "Adicionar grupo",
             name_current_action = "Ação atual",
             name_current_group = "Grupo atual",
             name_delete_action = "Deletar ação",
@@ -91,8 +93,6 @@ function TranslationUtils.SetupLanguage(language)
         Translation = lang_pt()
         TranslationUtils.current_language = 2
     end
-
-    util.toast("Changed Language")
 end
 
 --return translations
