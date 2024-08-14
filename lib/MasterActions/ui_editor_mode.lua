@@ -134,6 +134,39 @@ function editor_menu.add_animation(action_table, index, parent_menu, path_name, 
     editor_menu.create_animation_menu(current_table.animations, #current_table.animations, action_table, index, parent_menu, path_name .. ".animations")
 end
 
+function editor_menu.add_prop(action_table, index, parent_menu, path_name, default_value)
+    default_value = default_value or {prop = 0, attached = false, boneID = 31086, posX = 0, posY = 0, posZ = 0, rotX = 0, rotY = 0, rotZ = 0, additive = false, require_force_stop = false}
+    local current_table = action_table[index]
+    current_table.props = current_table.props or {}
+    table.insert(current_table.props, default_value)
+
+    save_to_current_file()
+
+    editor_menu.create_prop_menu(current_table.props, #current_table.props, action_table, index, parent_menu, path_name .. ".props")
+end
+
+function editor_menu.add_effect(action_table, index, parent_menu, path_name, default_value)
+    default_value = default_value or {effect_asset = "", effect_name = "", attached = false, boneID = 31086, posX = 0, posY = 0, posZ = 0, rotX = 0, rotY = 0, rotZ = 0, additive = false, require_force_stop = false}
+    local current_table = action_table[index]
+    current_table.effects = current_table.effects or {}
+    table.insert(current_table.effects, default_value)
+
+    save_to_current_file()
+
+    editor_menu.create_effect_menu(current_table.effects, #current_table.effects, action_table, index, parent_menu, path_name .. ".effects")
+end
+
+function editor_menu.add_sound(action_table, index, parent_menu, path_name, default_value)
+    default_value = default_value or {sound_name = "", sound_set = "", additive = false, require_force_stop = false}
+    local current_table = action_table[index]
+    current_table.sounds = current_table.sounds or {}
+    table.insert(current_table.sounds, default_value)
+
+    save_to_current_file()
+
+    editor_menu.create_sound_menu(current_table.sounds, #current_table.sounds, action_table, index, parent_menu, path_name .. ".sounds")
+end
+
 function editor_menu.delete_behaviour(behaviour_table, behaviour_index, action_table, action_index, parent_menu, path_name)
     table.remove(behaviour_table, behaviour_index)
     if #behaviour_table < 1 then
@@ -142,7 +175,7 @@ function editor_menu.delete_behaviour(behaviour_table, behaviour_index, action_t
     save_to_current_file()
 
     local parent_from_other_childs = parent_menu:getParent()
-    local base_menu_index = 3
+    local base_menu_index = 4
 
     editor_menu.delete_menus(parent_from_other_childs, base_menu_index)
     editor_menu.create_behaviour_menus(action_table, action_index, parent_from_other_childs, path_name)
@@ -231,37 +264,6 @@ end
 -- Menu creation
 
 function editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)
-    --[[local options = {}
-    local current_table = action_table[index]
-    if current_table.actions then
-        table.insert(options, Translation.menu.name_group)
-    else
-        if not current_table.animations and not current_table.props and not current_table.particles and not current_table.sounds then
-            table.insert(options, Translation.menu.name_group)
-        end
-        table.insert(options, Translation.menu.name_animation)
-        table.insert(options, Translation.menu.name_prop)
-        table.insert(options, Translation.menu.name_effect)
-        table.insert(options, Translation.menu.name_sound)
-    end]]
-    
-    --[[return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
-        if selected == 1 then
-            if #options == 1 or #options == 5 then -- is group
-                editor_menu.add_action(action_table, index, parent_menu, path_name)
-            elseif #options == 4 then  -- is animation
-                
-            end
-        elseif selected == 2 then -- animation
-            
-        elseif selected == 3 then -- prop
-            
-        elseif selected == 4 then -- particle
-            
-        elseif selected == 5 then -- sound
-            
-        end
-    end)]]
     local options = {Translation.menu.name_group, Translation.menu.name_animation, Translation.menu.name_prop, Translation.menu.name_effect, Translation.menu.name_sound}
     local current_table = action_table[index]
     return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
@@ -284,18 +286,21 @@ function editor_menu.create_add_action_textslider(action_table, index, parent_me
                 return
             end
             current_table.actions = nil
+            editor_menu.add_prop(action_table, index, parent_menu, path_name)
         elseif selected == 4 then -- particle
             if current_table.file_name or (current_table.actions and #current_table.actions > 0) then
                 util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
                 return
             end
             current_table.actions = nil
+            editor_menu.add_effect(action_table, index, parent_menu, path_name)
         elseif selected == 5 then -- sound
             if current_table.file_name or (current_table.actions and #current_table.actions > 0) then
                 util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
                 return
             end
             current_table.actions = nil
+            editor_menu.add_sound(action_table, index, parent_menu, path_name)
         end
     end)
 end
@@ -340,7 +345,7 @@ function editor_menu.create_animation_menu(animations_table, animation_index, ac
     local animation_menu = parent_menu:list("")
 
     local function update_menu_name()
-        animation_menu.menu_name = animation.dict .. ":" .. animation.name
+        animation_menu.menu_name = "(" .. Translation.menu.name_animation .. ") " .. animation.dict .. ":" .. animation.name
     end
     update_menu_name()
 
@@ -369,7 +374,7 @@ function editor_menu.create_animation_menu(animations_table, animation_index, ac
     end)
     blendout_slider.precision = 3
 
-    local duration_slider = animation_menu:click_slider_float(Translation.menu.name_animation_duration, {}, "", -1, 1000, animation.duration * 100, 100, function (value)
+    local duration_slider = animation_menu:click_slider_float(Translation.menu.name_animation_duration, {}, "", -100, 1000, animation.duration * 100, 100, function (value)
         animation.duration = value / 100
         save_to_current_file()
     end)
@@ -462,24 +467,254 @@ function editor_menu.create_animation_menu(animations_table, animation_index, ac
     end)
 end
 
+function editor_menu.create_transform_handle(root_table, parent_menu)
+    local pos_name = Translation.menu.name_position
+    local rot_name = Translation.menu.name_rotation
+    parent_menu:slider_float(pos_name .. "X", {}, "", -9999999, 9999999, root_table.posX * 100, 1, function (value)
+        root_table.posX = value / 100
+        save_to_current_file()
+    end)
+    parent_menu:slider_float(pos_name .. "Y", {}, "", -9999999, 9999999, root_table.posY * 100, 1, function (value)
+        root_table.posY = value / 100
+        save_to_current_file()
+    end)
+    parent_menu:slider_float(pos_name .. "Z", {}, "", -9999999, 9999999, root_table.posZ * 100, 1, function (value)
+        root_table.posZ = value / 100
+        save_to_current_file()
+    end)
+
+    parent_menu:slider_float(rot_name .. "X", {}, "", -9999999, 9999999, root_table.rotX * 100, 1, function (value)
+        root_table.rotX = value / 100
+        save_to_current_file()
+    end)
+    parent_menu:slider_float(rot_name .. "X", {}, "", -9999999, 9999999, root_table.rotY * 100, 1, function (value)
+        root_table.rotY = value / 100
+        save_to_current_file()
+    end)
+    parent_menu:slider_float(rot_name .. "X", {}, "", -9999999, 9999999, root_table.rotZ * 100, 1, function (value)
+        root_table.rotZ = value / 100
+        save_to_current_file()
+    end)
+end
+
+function editor_menu.create_prop_menu(props_table, prop_index, action_table, action_index, parent_menu, path_name)
+    local prop = props_table[prop_index]
+    local prop_path = path_name .. "." .. prop_index
+    local prop_menu = parent_menu:list("")
+
+    local function update_menu_name()
+        prop_menu.menu_name = "(" .. Translation.menu.name_prop .. ") " .. util.reverse_joaat(prop.prop)
+    end
+    update_menu_name()
+
+    local add_prop_menu = prop_menu:list(Translation.menu.name_prop, {}, "")
+
+    local add_prop_by_name = add_prop_menu:text_input("Name", {prop_path .. "byname"}, "", function (prop_name)
+        prop.prop = tonumber(util.joaat(prop_name))
+        save_to_current_file()
+        update_menu_name()
+    end)
+
+    local add_prop_by_hash = add_prop_menu:text_input("Hash", {prop_path .. "byhash"}, "", function (prop_hash)
+        prop.prop = tonumber(prop_hash)
+        save_to_current_file()
+        update_menu_name()
+    end)
+    
+    editor_menu.create_transform_handle(prop, prop_menu)
+
+    prop_menu:toggle(Translation.menu.name_attached, {}, Translation.menu.description_attached, function(value)
+        prop.attached = value
+        save_to_current_file()
+    end, prop.attached)
+
+    local function get_bone_index(bone_id)
+        local bones = {["31086"] = 1, ["39317"] = 2, ["24818"] = 3, ["11816"] = 4, ["18905"] = 5, ["57005"] = 6, ["46078"] = 7, ["28252"] = 8, ["2108"] = 9, ["65245"] = 10}
+        return bones[tostring(bone_id)]
+    end
+
+    local function get_bone_id(bone_index)
+        local bones = {31086, 39317, 24818, 11816, 18905, 57005, 46078, 28252, 2108, 65245}
+        return bones[bone_index]
+    end
+
+    prop_menu:list_select(Translation.menu.name_bone, {}, "", {
+        {1, Translation.menu.name_bone_head},
+        {2, Translation.menu.name_bone_neck},
+        {3, Translation.menu.name_bone_spine},
+        {4, Translation.menu.name_bone_pelvis},
+        {5, Translation.menu.name_bone_left_arm},
+        {6, Translation.menu.name_bone_right_arm},
+        {7, Translation.menu.name_bone_left_leg},
+        {8, Translation.menu.name_bone_right_leg},
+        {9, Translation.menu.name_bone_left_foot},
+        {10, Translation.menu.name_bone_right_foot}}, 
+    get_bone_index(prop.boneID), function (selected)
+        prop.boneID = get_bone_id(selected)
+        save_to_current_file()
+    end)
+
+    prop_menu:toggle(Translation.menu.name_additive, {}, Translation.menu.description_additive, function(value)
+        prop.additive = value
+        save_to_current_file()
+    end, prop.additive)
+
+    prop_menu:toggle(Translation.menu.name_require_force_stop, {}, Translation.menu.description_require_force_stop, function(value)
+        prop.require_force_stop = value
+        save_to_current_file()
+    end, prop.require_force_stop)
+
+    prop_menu:divider(Translation.menu.name_prop)
+    prop_menu:action(Translation.menu.name_duplicate, {}, Translation.menu.description_duplicate, function ()
+        editor_menu.add_prop(action_table, action_index, parent_menu, string.gsub(path_name, ".props$", ""), prop)
+    end)
+    prop_menu:action(Translation.menu.name_delete, {}, Translation.menu.description_delete, function ()
+        editor_menu.delete_behaviour(props_table, prop_index, action_table, action_index, prop_menu, string.gsub(path_name, ".props$", ""))
+    end)
+end
+
+function editor_menu.create_effect_menu(effects_table, effect_index, action_table, action_index, parent_menu, path_name)
+    local effect = effects_table[effect_index]
+    local effect_path = path_name .. "." .. effect_index
+    local effect_menu = parent_menu:list("")
+
+    local function update_menu_name()
+        effect_menu.menu_name = "(" .. Translation.menu.name_effect .. ") " .. effect.effect_asset .. ":" .. effect.effect_name
+    end
+    update_menu_name()
+
+    local effect_asset_field = effect_menu:text_input("Asset", {effect_path .. "asset"}, "", function (new_asset)
+        effect.effect_asset = new_asset
+        save_to_current_file()
+
+        update_menu_name()
+    end, effect.effect_asset)
+    local effect_name_field = effect_menu:text_input("Name", {effect_path .. "name"}, "", function (new_name)
+        effect.effect_name = new_name
+        save_to_current_file()
+
+        update_menu_name()
+    end, effect.effect_name)
+    
+    editor_menu.create_transform_handle(effect, effect_menu)
+
+    effect_menu:toggle(Translation.menu.name_attached, {}, Translation.menu.description_attached, function(value)
+        effect.attached = value
+        save_to_current_file()
+    end, effect.attached)
+
+    local function get_bone_index(bone_id)
+        local bones = {["31086"] = 1, ["39317"] = 2, ["24818"] = 3, ["11816"] = 4, ["18905"] = 5, ["57005"] = 6, ["46078"] = 7, ["28252"] = 8, ["2108"] = 9, ["65245"] = 10}
+        return bones[tostring(bone_id)]
+    end
+
+    local function get_bone_id(bone_index)
+        local bones = {31086, 39317, 24818, 11816, 18905, 57005, 46078, 28252, 2108, 65245}
+        return bones[bone_index]
+    end
+
+    effect_menu:list_select(Translation.menu.name_bone, {}, "", {
+        {1, Translation.menu.name_bone_head},
+        {2, Translation.menu.name_bone_neck},
+        {3, Translation.menu.name_bone_spine},
+        {4, Translation.menu.name_bone_pelvis},
+        {5, Translation.menu.name_bone_left_arm},
+        {6, Translation.menu.name_bone_right_arm},
+        {7, Translation.menu.name_bone_left_leg},
+        {8, Translation.menu.name_bone_right_leg},
+        {9, Translation.menu.name_bone_left_foot},
+        {10, Translation.menu.name_bone_right_foot}}, 
+    get_bone_index(effect.boneID), function (selected)
+        effect.boneID = get_bone_id(selected)
+        save_to_current_file()
+    end)
+
+    effect_menu:toggle(Translation.menu.name_additive, {}, Translation.menu.description_additive, function(value)
+        effect.additive = value
+        save_to_current_file()
+    end, effect.additive)
+
+    effect_menu:toggle(Translation.menu.name_require_force_stop, {}, Translation.menu.description_require_force_stop, function(value)
+        effect.require_force_stop = value
+        save_to_current_file()
+    end, effect.require_force_stop)
+
+    effect_menu:divider(Translation.menu.name_effect)
+    effect_menu:action(Translation.menu.name_duplicate, {}, Translation.menu.description_duplicate, function ()
+        editor_menu.add_effect(action_table, action_index, parent_menu, string.gsub(path_name, ".effects$", ""), effect)
+    end)
+    effect_menu:action(Translation.menu.name_delete, {}, Translation.menu.description_delete, function ()
+        editor_menu.delete_behaviour(effects_table, effect_index, action_table, action_index, effect_menu, string.gsub(path_name, ".effects$", ""))
+    end)
+end
+
+function editor_menu.create_sound_menu(sounds_table, sound_index, action_table, action_index, parent_menu, path_name)
+    local sound = sounds_table[sound_index]
+    local sound_path = path_name .. "." .. sound_index
+    local sound_menu = parent_menu:list("")
+
+    local function update_menu_name()
+        sound_menu.menu_name = "(" .. Translation.menu.name_sound .. ") " .. sound.sound_set .. ":" .. sound.sound_name
+    end
+    update_menu_name()
+
+    local sound_dict_field = sound_menu:text_input("Set", {sound_path .. "set"}, "", function (new_set)
+        sound.sound_set = new_set
+        save_to_current_file()
+
+        update_menu_name()
+    end, sound.sound_set)
+    local sound_name_field = sound_menu:text_input("Name", {sound_path .. "name"}, "", function (new_name)
+        sound.sound_name = new_name
+        save_to_current_file()
+
+        update_menu_name()
+    end, sound.sound_name)
+
+    sound_menu:toggle(Translation.menu.name_additive, {}, Translation.menu.description_additive, function(value)
+        sound.additive = value
+        save_to_current_file()
+    end, sound.additive)
+
+    sound_menu:toggle(Translation.menu.name_require_force_stop, {}, Translation.menu.description_require_force_stop, function(value)
+        sound.require_force_stop = value
+        save_to_current_file()
+    end, sound.require_force_stop)
+
+    sound_menu:divider(Translation.menu.name_sound)
+    sound_menu:action(Translation.menu.name_duplicate, {}, Translation.menu.description_duplicate, function ()
+        editor_menu.add_sound(action_table, action_index, parent_menu, string.gsub(path_name, ".sounds$", ""), sound)
+    end)
+    sound_menu:action(Translation.menu.name_delete, {}, Translation.menu.description_delete, function ()
+        editor_menu.delete_behaviour(sounds_table, sound_index, action_table, action_index, sound_menu, string.gsub(path_name, ".sounds$", ""))
+    end)
+end
+
 function editor_menu.create_behaviour_menus(action_table, index, parent_menu, path_name)
     local current_action = action_table[index]
     if current_action.animations then
-        local animations_path_name = path_name .. "." .. "animations"
-        --local animations_menu = parent_menu:list(Translation.menu.name_animations, {}, "")
-        for i, animation in ipairs(current_action.animations) do
-            --local animation_path_name = animations_path_name .. "." .. i
+        local animations_path_name = path_name .. ".animations"
+        for i, _ in ipairs(current_action.animations) do
             editor_menu.create_animation_menu(current_action.animations, i, action_table, index, parent_menu, animations_path_name)
         end
     end
     if current_action.props then
-        
+        local prop_path_name = path_name .. ".props"
+        for i, _ in ipairs(current_action.props) do
+            editor_menu.create_prop_menu(current_action.props, i, action_table, index, parent_menu, prop_path_name)
+        end
     end
     if current_action.effects then
-        
+        local effect_path_name = path_name .. ".effects"
+        for i, _ in ipairs(current_action.effects) do
+            editor_menu.create_effect_menu(current_action.effects, i, action_table, index, parent_menu, effect_path_name)
+        end
     end
     if current_action.sounds then
-        
+        local sounds_path_name = path_name .. ".sounds"
+        for i, _ in ipairs(current_action.sounds) do
+            editor_menu.create_sound_menu(current_action.sounds, i, action_table, index, parent_menu, sounds_path_name)
+        end
     end
 end
 
