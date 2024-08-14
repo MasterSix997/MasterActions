@@ -123,6 +123,31 @@ end
 
 -- Menu Utils
 
+function editor_menu.add_animation(action_table, index, parent_menu, path_name, default_value)
+    default_value = default_value or {dict = "", name = "", blendin = 4.2, blendout = 4.2, duration = -1, play_back = 0, flag = 0, additive = false, require_force_stop = false}
+    local current_table = action_table[index]
+    current_table.animations = current_table.animations or {}
+    table.insert(current_table.animations, default_value)
+
+    save_to_current_file()
+
+    editor_menu.create_animation_menu(current_table.animations, #current_table.animations, action_table, index, parent_menu, path_name .. ".animations")
+end
+
+function editor_menu.delete_behaviour(behaviour_table, behaviour_index, action_table, action_index, parent_menu, path_name)
+    table.remove(behaviour_table, behaviour_index)
+    if #behaviour_table < 1 then
+        behaviour_table = nil
+    end
+    save_to_current_file()
+
+    local parent_from_other_childs = parent_menu:getParent()
+    local base_menu_index = 3
+
+    editor_menu.delete_menus(parent_from_other_childs, base_menu_index)
+    editor_menu.create_behaviour_menus(action_table, action_index, parent_from_other_childs, path_name)
+end
+
 function editor_menu.add_action(action_table, index, parent_menu, path_name)
     -- table
     local current_table = action_table[index]
@@ -169,8 +194,6 @@ function editor_menu.delete_action(action_table, index, parent_menu, parent_path
         
         --menu.replace(parent_from_other_childs:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)))
     end
-
-
     
 end
 
@@ -218,7 +241,7 @@ function editor_menu.create_add_action_textslider(action_table, index, parent_me
         end
         table.insert(options, Translation.menu.name_animation)
         table.insert(options, Translation.menu.name_prop)
-        table.insert(options, Translation.menu.name_particle)
+        table.insert(options, Translation.menu.name_effect)
         table.insert(options, Translation.menu.name_sound)
     end]]
     
@@ -239,7 +262,7 @@ function editor_menu.create_add_action_textslider(action_table, index, parent_me
             
         end
     end)]]
-    local options = {Translation.menu.name_group, Translation.menu.name_animation, Translation.menu.name_prop, Translation.menu.name_particle, Translation.menu.name_sound}
+    local options = {Translation.menu.name_group, Translation.menu.name_animation, Translation.menu.name_prop, Translation.menu.name_effect, Translation.menu.name_sound}
     local current_table = action_table[index]
     return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
         if selected == 1 then -- group
@@ -249,25 +272,30 @@ function editor_menu.create_add_action_textslider(action_table, index, parent_me
             end
             editor_menu.add_action(action_table, index, parent_menu, path_name)
         elseif selected == 2 then -- animation
-            if current_table.file_name or current_table.actions then
+            if current_table.file_name or (current_table.actions and #current_table.actions > 0) then
                 util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
                 return
             end
+            current_table.actions = nil
+            editor_menu.add_animation(action_table, index, parent_menu, path_name)
         elseif selected == 3 then -- prop
-            if current_table.file_name or current_table.actions then
+            if current_table.file_name or (current_table.actions and #current_table.actions > 0) then
                 util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
                 return
             end
+            current_table.actions = nil
         elseif selected == 4 then -- particle
-            if current_table.file_name or current_table.actions then
+            if current_table.file_name or (current_table.actions and #current_table.actions > 0) then
                 util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
                 return
             end
+            current_table.actions = nil
         elseif selected == 5 then -- sound
-            if current_table.file_name or current_table.actions then
+            if current_table.file_name or (current_table.actions and #current_table.actions > 0) then
                 util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
                 return
             end
+            current_table.actions = nil
         end
     end)
 end
@@ -295,9 +323,6 @@ function editor_menu.create_action_menu(action_table, index, parent_menu, parent
         editor_menu.rename_action(action_table, index, current_menu, new_name, parent_path, action_table[index].file_name)
     end, name)
     local add_action_textslider = editor_menu.create_add_action_textslider(action_table, index, current_menu, path_name)
-    current_menu:action("Recalculate options", {}, "", function ()
-        menu.replace(parent_menu:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, current_menu, path_name)))
-    end)
     local delete_action = current_menu:action(Translation.menu.name_delete_action, {}, "", function ()
         editor_menu.delete_action(action_table, index, current_menu, parent_path, action_table[index].file_name)
     end)
@@ -305,15 +330,146 @@ function editor_menu.create_action_menu(action_table, index, parent_menu, parent
     if action_table[index].actions then
         editor_menu.create_action_menus(action_table[index].actions, current_menu, path_name)
     else
-
+        editor_menu.create_behaviour_menus(action_table, index, current_menu, path_name)
     end
+end
+
+function editor_menu.create_animation_menu(animations_table, animation_index, action_table, action_index, parent_menu, path_name)
+    local animation = animations_table[animation_index]
+    local animation_path = path_name .. "." .. animation_index
+    local animation_menu = parent_menu:list("")
+
+    local function update_menu_name()
+        animation_menu.menu_name = animation.dict .. ":" .. animation.name
+    end
+    update_menu_name()
+
+    local animation_dict_field = animation_menu:text_input("Dict", {animation_path .. "dict"}, "", function (new_dict)
+        animation.dict = new_dict
+        save_to_current_file()
+
+        update_menu_name()
+    end, animation.dict)
+    local animation_name_field = animation_menu:text_input("Name", {animation_path .. "name"}, "", function (new_name)
+        animation.name = new_name
+        save_to_current_file()
+
+        update_menu_name()
+    end, animation.name)
+
+    local blendin_slider = animation_menu:click_slider_float(Translation.menu.name_animation_blendin, {}, "", 1, 10000, animation.blendin * 1000, 100, function (value)
+        animation.blendin = value / 1000
+        save_to_current_file()
+    end)
+    blendin_slider.precision = 3
+
+    local blendout_slider = animation_menu:click_slider_float(Translation.menu.name_animation_blendout, {}, "", 1, 10000, animation.blendout * 1000, 100, function (value)
+        animation.blendout = value / 1000
+        save_to_current_file()
+    end)
+    blendout_slider.precision = 3
+
+    local duration_slider = animation_menu:click_slider_float(Translation.menu.name_animation_duration, {}, "", -1, 1000, animation.duration * 100, 100, function (value)
+        animation.duration = value / 100
+        save_to_current_file()
+    end)
+
+    local play_back_slider = animation_menu:click_slider_float(Translation.menu.name_animation_play_back_rate, {}, "", 0, 1000, animation.play_back * 100, 100, function (value)
+        animation.play_back = value / 100
+        save_to_current_file()
+    end)
+
+    local animFlags = {
+        FLAG_NORMAL = 0,
+        FLAG_REPEAT = 1,
+        FLAG_STOP_LAST_FRAME = 2,
+        FLAG_UPPERBODY = 16,
+        FLAG_ENABLE_PLAYER_CONTROL = 32,
+        FLAG_CANCELABLE = 120
+    }
+
+    local function boolsToFlag(repeatAnim, stopLastFrame, upperBody, enablePlayerControl, cancelable)
+        local flag = 0
+        flag = flag | (repeatAnim and animFlags.FLAG_REPEAT or 0)
+        flag = flag | (stopLastFrame and animFlags.FLAG_STOP_LAST_FRAME or 0)
+        flag = flag | (upperBody and animFlags.FLAG_UPPERBODY or 0)
+        flag = flag | (enablePlayerControl and animFlags.FLAG_ENABLE_PLAYER_CONTROL or 0)
+        flag = flag | (cancelable and animFlags.FLAG_CANCELABLE or 0)
+        return flag
+    end
+
+    local function flagToBools(flag)
+        return
+        (flag & animFlags.FLAG_REPEAT) ~= 0,
+        (flag & animFlags.FLAG_STOP_LAST_FRAME) ~= 0,
+        (flag & animFlags.FLAG_UPPERBODY) ~= 0,
+        (flag & animFlags.FLAG_ENABLE_PLAYER_CONTROL) ~= 0,
+        (flag & animFlags.FLAG_CANCELABLE) ~= 0
+    end
+    
+    local looped, stop_last_frame, upper_body, enable_player_control, cancelable = flagToBools(animation.flag)
+
+    local function get_flag()
+        return boolsToFlag(looped, stop_last_frame, upper_body, enable_player_control, cancelable)
+    end
+    
+    animation_menu:toggle(Translation.menu.name_animation_repeatflag, {}, Translation.menu.description_animation_repeatflag, function(value)
+        looped = value
+        animation.flag = get_flag()
+        save_to_current_file()
+    end, looped)
+
+    animation_menu:toggle(Translation.menu.name_animation_stop_last_frame_flag, {}, Translation.menu.description_animation_stop_last_frame_flag, function(value)
+        stop_last_frame = value
+        animation.flag = get_flag()
+        save_to_current_file()
+    end, stop_last_frame)
+
+    animation_menu:toggle(Translation.menu.name_animation_upper_body_flag, {}, Translation.menu.description_animation_upper_body_flag, function(value)
+        upper_body = value
+        animation.flag = get_flag()
+        save_to_current_file()
+    end, upper_body)
+
+    animation_menu:toggle(Translation.menu.name_animation_player_control_flag, {}, Translation.menu.description_animation_player_control_flag, function(value)
+        enable_player_control = value
+        animation.flag = get_flag()
+        save_to_current_file()
+    end, enable_player_control)
+    
+    animation_menu:toggle(Translation.menu.name_animation_cancelable_flag, {}, Translation.menu.description_animation_cancelable_flag, function(value)
+        cancelable = value
+        animation.flag = get_flag()
+        save_to_current_file()
+    end, cancelable)
+
+    animation_menu:toggle(Translation.menu.name_additive, {}, Translation.menu.description_additive, function(value)
+        animation.additive = value
+        save_to_current_file()
+    end, animation.additive)
+
+    animation_menu:toggle(Translation.menu.name_require_force_stop, {}, Translation.menu.description_require_force_stop, function(value)
+        animation.require_force_stop = value
+        save_to_current_file()
+    end, animation.require_force_stop)
+
+    animation_menu:divider(Translation.menu.name_animation)
+    animation_menu:action(Translation.menu.name_duplicate, {}, Translation.menu.description_duplicate, function ()
+        editor_menu.add_animation(action_table, action_index, parent_menu, string.gsub(path_name, ".animations$", ""), animation)
+    end)
+    animation_menu:action(Translation.menu.name_delete, {}, Translation.menu.description_delete, function ()
+        editor_menu.delete_behaviour(animations_table, animation_index, action_table, action_index, animation_menu, string.gsub(path_name, ".animations$", ""))
+    end)
 end
 
 function editor_menu.create_behaviour_menus(action_table, index, parent_menu, path_name)
     local current_action = action_table[index]
     if current_action.animations then
-        for index, value in ipairs(current_action.animations) do
-            
+        local animations_path_name = path_name .. "." .. "animations"
+        --local animations_menu = parent_menu:list(Translation.menu.name_animations, {}, "")
+        for i, animation in ipairs(current_action.animations) do
+            --local animation_path_name = animations_path_name .. "." .. i
+            editor_menu.create_animation_menu(current_action.animations, i, action_table, index, parent_menu, animations_path_name)
         end
     end
     if current_action.props then
@@ -326,12 +482,6 @@ function editor_menu.create_behaviour_menus(action_table, index, parent_menu, pa
         
     end
 end
-
---[[function editor_menu.recreate_actions_menu(action_table, index, parent_menu, path_name)
-    local parent = parent_menu:getParent()
-    parent_menu:delete()
-    editor_menu.create_action_menu(action_table, index, parent, path_name)
-end]]
 
 function editor_menu.create_action_menus(action_table, parent_menu, path_name)
     for index, value in ipairs(action_table) do
