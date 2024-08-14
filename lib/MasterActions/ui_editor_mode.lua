@@ -133,26 +133,59 @@ function editor_menu.add_action(action_table, index, parent_menu, path_name)
     save_to_current_file()
 
     -- menu
-    menu.replace(parent_menu:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)))
+    --menu.replace(parent_menu:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)))
 
     editor_menu.create_action_menu(current_table.actions, #current_table.actions, parent_menu, path_name)
 end
 
-function editor_menu.delete_action(action_table, index, parent_menu, path_name, is_file)
-    --table.remove(action_table, index)
+function editor_menu.delete_action(action_table, index, parent_menu, parent_path_name, is_file)
     if is_file then
         data.DeleteActionFile(editor_menu.current_file)
-    else
-        action_table[index] = nil
-        if #action_table < 1 then
-            action_table = nil
+
+        local parent_from_other_childs = parent_menu:getParent()
+        local base_menu_index = 1
+
+        editor_menu.delete_menus(parent_from_other_childs, base_menu_index + index)
+
+        for i = index, #action_table do
+            if action_table[i] then
+                editor_menu.create_action_menu(action_table, i, parent_from_other_childs, parent_path_name)
+            end
         end
+    else
+        table.remove(action_table, index)
         save_to_current_file()
+
+        local parent_from_other_childs = parent_menu:getParent()
+        local base_menu_index = 3
+
+        editor_menu.delete_menus(parent_from_other_childs, base_menu_index + index)
+
+        for i = index, #action_table do
+            if action_table[i] then
+                editor_menu.create_action_menu(action_table, i, parent_from_other_childs, parent_path_name)
+            end
+        end
+        
+        --menu.replace(parent_from_other_childs:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)))
     end
 
 
-    --menu.replace(parent_menu:getParent():getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)))
-    parent_menu:delete()
+    
+end
+
+---Delete childrens from the parent menu
+---@param parent_menu any
+---@param from any the first child (if nill, from = 1)
+---@param to any the last child (if nill, to = childrens)
+function editor_menu.delete_menus(parent_menu, from, to)
+    local childrens = parent_menu:getChildren()
+    from = from or 1
+    to = to or #childrens
+
+    for i = from, to do
+        childrens[i]:delete()
+    end
 end
 
 function editor_menu.rename_action(action_table, index, parent_menu, new_name, parent_path_name, is_file)
@@ -175,7 +208,7 @@ end
 -- Menu creation
 
 function editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)
-    local options = {}
+    --[[local options = {}
     local current_table = action_table[index]
     if current_table.actions then
         table.insert(options, Translation.menu.name_group)
@@ -187,23 +220,54 @@ function editor_menu.create_add_action_textslider(action_table, index, parent_me
         table.insert(options, Translation.menu.name_prop)
         table.insert(options, Translation.menu.name_particle)
         table.insert(options, Translation.menu.name_sound)
-    end
-
-    return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
+    end]]
+    
+    --[[return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
         if selected == 1 then
             if #options == 1 or #options == 5 then -- is group
                 editor_menu.add_action(action_table, index, parent_menu, path_name)
             elseif #options == 4 then  -- is animation
-                -- Implementar lógica para animação
+                
             end
         elseif selected == 2 then -- animation
-            -- Implementar lógica para animação
+            
         elseif selected == 3 then -- prop
-            -- Implementar lógica para prop
+            
         elseif selected == 4 then -- particle
-            -- Implementar lógica para particle
+            
         elseif selected == 5 then -- sound
-            -- Implementar lógica para sound
+            
+        end
+    end)]]
+    local options = {Translation.menu.name_group, Translation.menu.name_animation, Translation.menu.name_prop, Translation.menu.name_particle, Translation.menu.name_sound}
+    local current_table = action_table[index]
+    return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
+        if selected == 1 then -- group
+            if current_table.animations or current_table.props or current_table.particles or current_table.sounds then
+                util.toast("Não é possivel adicionar um grupo dentro dessa ação")
+                return
+            end
+            editor_menu.add_action(action_table, index, parent_menu, path_name)
+        elseif selected == 2 then -- animation
+            if current_table.file_name or current_table.actions then
+                util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
+                return
+            end
+        elseif selected == 3 then -- prop
+            if current_table.file_name or current_table.actions then
+                util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
+                return
+            end
+        elseif selected == 4 then -- particle
+            if current_table.file_name or current_table.actions then
+                util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
+                return
+            end
+        elseif selected == 5 then -- sound
+            if current_table.file_name or current_table.actions then
+                util.toast("Não é possivel adicionar este comportamento dentro dessa ação")
+                return
+            end
         end
     end)
 end
@@ -225,7 +289,7 @@ function editor_menu.create_action_menu(action_table, index, parent_menu, parent
         --util.toast("Back: " .. name)
         editor_menu.current_file = nil
     end, function ()
-        util.toast("Update: " .. name)
+        --util.toast("Update: " .. name)
     end)
     local name_field = current_menu:text_input(Translation.menu.name_current_action, {path_name}, "", function (new_name)
         editor_menu.rename_action(action_table, index, current_menu, new_name, parent_path, action_table[index].file_name)
@@ -235,11 +299,31 @@ function editor_menu.create_action_menu(action_table, index, parent_menu, parent
         menu.replace(parent_menu:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, current_menu, path_name)))
     end)
     local delete_action = current_menu:action(Translation.menu.name_delete_action, {}, "", function ()
-        editor_menu.delete_action(action_table, index, current_menu, path_name, action_table[index].file_name)
+        editor_menu.delete_action(action_table, index, current_menu, parent_path, action_table[index].file_name)
     end)
 
     if action_table[index].actions then
-        editor_menu.create_actions_menu(action_table[index].actions, current_menu, path_name)
+        editor_menu.create_action_menus(action_table[index].actions, current_menu, path_name)
+    else
+
+    end
+end
+
+function editor_menu.create_behaviour_menus(action_table, index, parent_menu, path_name)
+    local current_action = action_table[index]
+    if current_action.animations then
+        for index, value in ipairs(current_action.animations) do
+            
+        end
+    end
+    if current_action.props then
+        
+    end
+    if current_action.effects then
+        
+    end
+    if current_action.sounds then
+        
     end
 end
 
@@ -249,7 +333,7 @@ end
     editor_menu.create_action_menu(action_table, index, parent, path_name)
 end]]
 
-function editor_menu.create_actions_menu(action_table, parent_menu, path_name)
+function editor_menu.create_action_menus(action_table, parent_menu, path_name)
     for index, value in ipairs(action_table) do
         editor_menu.create_action_menu(action_table, index, parent_menu, path_name)
     end
@@ -274,7 +358,7 @@ function editor.create_editor_interface()
         editor_menu.create_action_menu(data.actions_files, #data.actions_files, root, "root")
     end)
 
-    editor_menu.create_actions_menu(data.actions_files, root, "root")
+    editor_menu.create_action_menus(data.actions_files, root, "root")
 end
 
 return editor
