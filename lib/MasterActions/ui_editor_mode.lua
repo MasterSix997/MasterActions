@@ -1,133 +1,186 @@
 local editor = {}
 
--- Menus
+local function print_table(node)
+    local cache, stack, output = {},{},{}
+    local depth = 1
+    local output_str = "{\n"
+
+    while true do
+        local size = 0
+        for k,v in pairs(node) do
+            size = size + 1
+        end
+
+        local cur_index = 1
+        for k,v in pairs(node) do
+            if (cache[node] == nil) or (cur_index >= cache[node]) then
+
+                if (string.find(output_str,"}",output_str:len())) then
+                    output_str = output_str .. ",\n"
+                elseif not (string.find(output_str,"\n",output_str:len())) then
+                    output_str = output_str .. "\n"
+                end
+
+                -- This is necessary for working with HUGE tables otherwise we run out of memory using concat on huge strings
+                table.insert(output,output_str)
+                output_str = ""
+
+                local key
+                if (type(k) == "number" or type(k) == "boolean") then
+                    key = "["..tostring(k).."]"
+                else
+                    key = "['"..tostring(k).."']"
+                end
+
+                if (type(v) == "number" or type(v) == "boolean") then
+                    output_str = output_str .. string.rep('\t',depth) .. key .. " = "..tostring(v)
+                elseif (type(v) == "table") then
+                    output_str = output_str .. string.rep('\t',depth) .. key .. " = {\n"
+                    table.insert(stack,node)
+                    table.insert(stack,v)
+                    cache[node] = cur_index+1
+                    break
+                else
+                    output_str = output_str .. string.rep('\t',depth) .. key .. " = '"..tostring(v).."'"
+                end
+
+                if (cur_index == size) then
+                    output_str = output_str .. "\n" .. string.rep('\t',depth-1) .. "}"
+                else
+                    output_str = output_str .. ","
+                end
+            else
+                -- close the table
+                if (cur_index == size) then
+                    output_str = output_str .. "\n" .. string.rep('\t',depth-1) .. "}"
+                end
+            end
+
+            cur_index = cur_index + 1
+        end
+
+        if (size == 0) then
+            output_str = output_str .. "\n" .. string.rep('\t',depth-1) .. "}"
+        end
+
+        if (#stack > 0) then
+            node = stack[#stack]
+            stack[#stack] = nil
+            depth = cache[node] == nil and depth + 1 or depth - 1
+        else
+            break
+        end
+    end
+
+    -- This is necessary for working with HUGE tables otherwise we run out of memory using concat on huge strings
+    table.insert(output,output_str)
+    output_str = table.concat(output)
+
+    print(output_str)
+end
+
 local root
-local file_name_input
-local files_selector
---
-local files = {}
-local current_file = 1
---[[
-actions = {
-    {
-        name = "Group_1"
-        actions = {
-            {
-                name = "Action 1"
-            },
-            {
-                name = "Action 2"
-            },
-            {
-                name = "Action 3"
-            }
-        ]
-    },
-    {
-        name = "Dances"
-        actions = {
-            {
-                name = "Slow dance",
-                animations = {
-                    { name = "animation_1" }
-                }
-            },
-            {
-                name = "normal dance",
-                animations = }
-                    { name = "animation_1" }
-                },
-                props = {
-                    { name = "prop_3" }
-                }
-            },
-            {
-                name = "erotic",
-                actions = {}
-                    {
-                        name = "lap dance"
-                    },
-                    {
-                        name = "chair dance"
-                    }
-                }
-            }
-        }
-    },
-}
+local is_root_created = false
 
-Regras
-    - Quando for adicionado, renomeado, ou removido uma action: deve ser atualizado a table e o menu
-    - Caso uma action esteja vazia {name = "action"} é permitido adicionar (action, animation, prop, particle e sound)
-    - Caso uma action contenha outra(s) action dentro {name = "action", actions = {{name = "subaction"}}} só é permitido adicionar novas actions (action)
-    - Caso uma action contenha outra coisa dentro que não é uma action {name = "action", animations = {{name = "animation_1"}}, sounds = {{name = "sound_1"}}} não é mais permitido adicionar outras coisas alem dessas (animation, prop, particle, sound)
-    - Quando for adicionado ou removido actions e outras coisas as opções dentro do textslider de adicionar coisas, deve ser atualizadas para somente as coisas permitidas
-]]
+local editor_menu = {}
 
-local edit_menu = {}
+editor_menu.current_file = ""
 
-local function exists_name(root_table, name)
-    if not root_table.actions then util.toast("BUG: actions table is missing.") return false end
-    for i, action in ipairs(root_table.actions) do
-        if action.name == name then
+local function exists_name(action_table, name)
+    if not action_table or #action_table < 1 then
+        return false
+    end
+    for _, action in ipairs(action_table) do
+        if action.name and action.name == name then
+            return true
+        elseif action.file_name and action.file_name == name then
             return true
         end
     end
     return false
 end
 
-local function get_valid_name(root_table, name)
+local function get_valid_name(action_table, name)
     name = name:match("^%s*(.-)%s*$")
     if name == "" then
         name = "valid_name"
     end
     local number = 0
-    while exists_name(root_table, name .. (number == 0 and "" or number)) do
+    while exists_name(action_table, name .. (number == 0 and "" or number)) do
         number = number + 1
     end
     if number ~= 0 then
         name = name .. number
     end
-
     return name
 end
 
-function edit_menu.add_action(root_table, root_menu, path)
-    -- Data
-    root_table.actions = root_table.actions or {}
-
-    table.insert(root_table.actions, {name = get_valid_name(root_table, "new action")})
-
-    -- Menu
-    edit_menu.create_action_menu(root_table.actions, #root_table.actions, root_menu, path)
-    menu.replace(root_menu:getChildren()[2], menu.detach(edit_menu.create_add_action_textslider(root_table, root_menu, path)))
-end
-
-function edit_menu.remove_action(root_table, action_index, action_menu, root_menu, path)
-    root_table[action_index] = nil
-    action_menu:delete()
-    
-    if #root_table < 1 then
-        root_table = nil
-        local textSlider = root_menu:getChildren()[2]
-        if textSlider:getType() == 5 then
-            textSlider:setTextsliderOptions({Translation.menu.name_group, Translation.menu.name_animation, Translation.menu.name_prop, Translation.menu.name_particle, Translation.menu.name_sound})
-        end
+local function save_to_current_file()
+    if editor_menu.current_file then
+        data.SaveActionFile(editor_menu.current_file)
     end
 end
 
-function edit_menu.rename_action(parent_table, action_index, new_name, action_menu)
-    new_name = get_valid_name(parent_table, new_name)
-    parent_table[action_index].name = new_name
-    action_menu.menu_name = new_name
+-- Menu Utils
+
+function editor_menu.add_action(action_table, index, parent_menu, path_name)
+    -- table
+    local current_table = action_table[index]
+    current_table.actions = current_table.actions or {}
+    table.insert(current_table.actions, {name = get_valid_name(current_table.actions, "New Action Group")})
+
+    -- file
+    save_to_current_file()
+
+    -- menu
+    menu.replace(parent_menu:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)))
+
+    editor_menu.create_action_menu(current_table.actions, #current_table.actions, parent_menu, path_name)
 end
 
-function edit_menu.create_add_action_textslider(root_table, root_menu, path)
+function editor_menu.delete_action(action_table, index, parent_menu, path_name, is_file)
+    --table.remove(action_table, index)
+    if is_file then
+        data.DeleteActionFile(editor_menu.current_file)
+    else
+        action_table[index] = nil
+        if #action_table < 1 then
+            action_table = nil
+        end
+        save_to_current_file()
+    end
+
+
+    --menu.replace(parent_menu:getParent():getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)))
+    parent_menu:delete()
+end
+
+function editor_menu.rename_action(action_table, index, parent_menu, new_name, parent_path_name, is_file)
+    new_name = get_valid_name(action_table, new_name)
+    if not is_file then
+        action_table[index].name = new_name
+        save_to_current_file()
+    elseif editor_menu.current_file then
+        data.RenameActionFile(editor_menu.current_file, new_name)
+        --action_table[index].file_name = new_name
+    end
+
+    editor_menu.create_action_menu(action_table, index, parent_menu:getParent(), parent_path_name)
+    parent_menu:delete()
+    --parent_menu.menu_name = new_name
+    --name_field.value = new_name
+    --name_field:setCommandNames({path_name_without_last .. new_name})
+end
+
+-- Menu creation
+
+function editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)
     local options = {}
-    if root_table.actions then
+    local current_table = action_table[index]
+    if current_table.actions then
         table.insert(options, Translation.menu.name_group)
     else
-        if not root_table.animations and not root_table.props and not root_table.particles and not root_table.sounds then
+        if not current_table.animations and not current_table.props and not current_table.particles and not current_table.sounds then
             table.insert(options, Translation.menu.name_group)
         end
         table.insert(options, Translation.menu.name_animation)
@@ -136,124 +189,92 @@ function edit_menu.create_add_action_textslider(root_table, root_menu, path)
         table.insert(options, Translation.menu.name_sound)
     end
 
-    return root_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
+    return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
         if selected == 1 then
             if #options == 1 or #options == 5 then -- is group
-                edit_menu.add_action(root_table, root_menu, path)
+                editor_menu.add_action(action_table, index, parent_menu, path_name)
             elseif #options == 4 then  -- is animation
-
+                -- Implementar lógica para animação
             end
         elseif selected == 2 then -- animation
-            
+            -- Implementar lógica para animação
         elseif selected == 3 then -- prop
-
+            -- Implementar lógica para prop
         elseif selected == 4 then -- particle
-
+            -- Implementar lógica para particle
         elseif selected == 5 then -- sound
+            -- Implementar lógica para sound
         end
     end)
 end
 
-function edit_menu.create_action_menu(root_table, index, root_menu, path)
-    local action = root_table[index]
-    local action_path = path .. "." .. action.name
+function editor_menu.create_action_menu(action_table, index, parent_menu, parent_path)
+    if not action_table[index] then
+        util.toast("BUG: action_table[index] is nil.")
+        return
+    end
+    
+    local name = action_table[index].name or action_table[index].file_name
+    local path_name = parent_path .. "." .. name
 
-    local action_menu = root_menu:list(action.name, {}, "")
-    local action_name_field = action_menu:text_input(Translation.menu.name_current_action, {action_path}, "", function (new_name)
-        edit_menu.rename_action(root_table, index, new_name, action_menu)
-    end, action.name)
-    local action_add = edit_menu.create_add_action_textslider(root_table, action_menu, action_path)
-    local action_delete = action_menu:action(Translation.menu.name_delete_action, {}, "", function ()
-        edit_menu.remove_action(root_table, index, action_menu, root_menu, path)
+    -- Menu Creation
+    local current_menu = action_table[index].name and parent_menu:list(name, {}, "") or parent_menu:list(name, {}, "", function ()
+        --util.toast("Click: " .. name)
+        editor_menu.current_file = name
+    end, function ()
+        --util.toast("Back: " .. name)
+        editor_menu.current_file = nil
+    end, function ()
+        util.toast("Update: " .. name)
     end)
-end
+    local name_field = current_menu:text_input(Translation.menu.name_current_action, {path_name}, "", function (new_name)
+        editor_menu.rename_action(action_table, index, current_menu, new_name, parent_path, action_table[index].file_name)
+    end, name)
+    local add_action_textslider = editor_menu.create_add_action_textslider(action_table, index, current_menu, path_name)
+    current_menu:action("Recalculate options", {}, "", function ()
+        menu.replace(parent_menu:getChildren()[2], menu.detach(editor_menu.create_add_action_textslider(action_table, index, current_menu, path_name)))
+    end)
+    local delete_action = current_menu:action(Translation.menu.name_delete_action, {}, "", function ()
+        editor_menu.delete_action(action_table, index, current_menu, path_name, action_table[index].file_name)
+    end)
 
--- Add an action, to menu list
-function edit_menu.create_actions_list(root_table, root_menu, path)
-    for i, action in ipairs(root_table) do
-        edit_menu.create_action_menu(root_table, i, root_menu, path)
+    if action_table[index].actions then
+        editor_menu.create_actions_menu(action_table[index].actions, current_menu, path_name)
     end
 end
 
-local function clear_actions_list()
-    for index, child in ipairs(root:getChildren()) do
-        if index > 6 then
-            child:delete()
-        end
+--[[function editor_menu.recreate_actions_menu(action_table, index, parent_menu, path_name)
+    local parent = parent_menu:getParent()
+    parent_menu:delete()
+    editor_menu.create_action_menu(action_table, index, parent, path_name)
+end]]
+
+function editor_menu.create_actions_menu(action_table, parent_menu, path_name)
+    for index, value in ipairs(action_table) do
+        editor_menu.create_action_menu(action_table, index, parent_menu, path_name)
     end
-    menu.collect_garbage()
 end
 
-local is_root_created = false
-local function create_root_editor()
+function editor.create_editor_interface()
     if is_root_created then
         root:delete()
         menu.collect_garbage()
     end
 
     is_root_created = true
-
-    root = menu.my_root():list(Translation.menu.name_editor, {"masteract_editor"}, Translation.menu.description_editor)
-
-    files = {}
-    for index, file_actions in ipairs(data.actions_files) do
-        table.insert(files, {index, file_actions.file_name})
-    end
-    if #files < 1 then
-        root:action(Translation.menu.name_add_file, {"masteract_addfile"}, "", function ()
-            local new_file_name = "new file"
-            data.actions_files[#data.actions_files+1] = {file_name = new_file_name, actions = {}}
-            data.SaveActionFile(new_file_name)
-            current_file = #files + 1
-            create_root_editor()
-        end)
-        return
-    end
-
-    files_selector = root:list_select(Translation.menu.name_current_file, {"masteract_curfile"}, "", files, current_file, function (selected)
-        current_file = selected
-        clear_actions_list()
-        edit_menu.create_actions_list(data.actions_files[current_file].actions, root, "root")
-        file_name_input.value = files[current_file][2]
+    root = menu.my_root():list(Translation.menu.name_editor, {}, Translation.menu.description_editor)
+    menu.my_root():action("Log table", {}, "", function ()
+        print_table(data.actions_files)
     end)
 
-    file_name_input = root:text_input(Translation.menu.name_current_file, {"masteract_renamefile"}, "", function (new_name)
-        data.RenameActionFile(files[current_file][2], new_name)
-        files[current_file][2] = new_name
-        files_selector:setListActionOptions(files)
-    end, files[current_file][2])
-
-
-    root:action(Translation.menu.name_delete_file, {"masteract_deletefile"}, "", function ()
-        data.DeleteActionFile(files[current_file][2])
-        current_file = 1
-        create_root_editor()
+    root:action(Translation.menu.name_add_file, {}, "", function ()
+        table.insert(data.actions_files, {file_name = "", actions = {}})
+        data.actions_files[#data.actions_files].file_name = get_valid_name(data.actions_files, "New Actions")
+        data.SaveActionFile(data.actions_files[#data.actions_files].file_name)
+        editor_menu.create_action_menu(data.actions_files, #data.actions_files, root, "root")
     end)
 
-    root:action(Translation.menu.name_add_file, {"masteract_addfile"}, "", function ()
-        local new_file_name = "new file"
-        data.actions_files[#data.actions_files+1] = {file_name = new_file_name, actions = {}}
-        data.SaveActionFile(new_file_name)
-        current_file = #files + 1
-        create_root_editor()
-    end)
-
-    root:action(Translation.menu.name_add_group, {}, "", function ()
-        data.actions_files[current_file].actions = data.actions_files[current_file].actions or {}
-        table.insert(data.actions_files[current_file].actions, {name = "new group"})
-        data.SaveActionFile(files[current_file][2])
-        clear_actions_list()
-        edit_menu.create_actions_list(data.actions_files[current_file].actions, root, "root")
-    end)
-
-    root:divider(Translation.menu.name_actions)
-
-    --list_actions(root, data.actions_files[current_file].actions)
-    edit_menu.create_actions_list(data.actions_files[current_file].actions, root, "root")
-end
-
-function editor.create_editor_interface()
-    create_root_editor()
+    editor_menu.create_actions_menu(data.actions_files, root, "root")
 end
 
 return editor
