@@ -167,6 +167,28 @@ function editor_menu.add_sound(action_table, index, parent_menu, path_name, defa
     editor_menu.create_sound_menu(current_table.sounds, #current_table.sounds, action_table, index, parent_menu, path_name .. ".sounds")
 end
 
+--[[function editor_menu.add_behaviour(action_table, index, parent_menu, path_name, default_value, behaviour_type)
+    local function get_default_value()
+        if behaviour_type == "animations" then
+            return {dict = "", name = "", blendin = 4.2, blendout = 4.2, duration = -1, play_back = 0, flag = 0, additive = false, require_force_stop = false}
+        elseif behaviour_type == "props" then
+            return {prop = 0, attached = false, boneID = 31086, posX = 0, posY = 0, posZ = 0, rotX = 0, rotY = 0, rotZ = 0, additive = false, require_force_stop = false}
+        elseif behaviour_type == "effects" then
+            return {effect_asset = "", effect_name = "", attached = false, boneID = 31086, posX = 0, posY = 0, posZ = 0, rotX = 0, rotY = 0, rotZ = 0, additive = false, require_force_stop = false}
+        elseif behaviour_type == "sounds" then
+            return {sound_name = "", sound_set = "", additive = false, require_force_stop = false}
+        end
+    end
+    default_value = default_value or get_default_value()
+    local current_table = action_table[index]
+    current_table[behaviour_type] = current_table[behaviour_type] or {}
+    table.insert(current_table[behaviour_type], default_value)
+
+    save_to_current_file()
+
+    --editor_menu.create_sound_menu(current_table.sounds, #current_table.sounds, action_table, index, parent_menu, path_name .. ".sounds")
+end]]
+
 function editor_menu.delete_behaviour(behaviour_table, behaviour_index, action_table, action_index, parent_menu, path_name)
     table.remove(behaviour_table, behaviour_index)
     if #behaviour_table < 1 then
@@ -268,10 +290,17 @@ function editor_menu.create_add_action_textslider(action_table, index, parent_me
     local current_table = action_table[index]
     return parent_menu:textslider(Translation.menu.name_add_action, {}, "", options, function (selected)
         if selected == 1 then -- group
-            if current_table.animations or current_table.props or current_table.particles or current_table.sounds then
+            if (current_table.animations and #current_table.animations > 0) or 
+            (current_table.props and #current_table.props > 0) or 
+            (current_table.particles and #current_table.props > 0) or 
+            (current_table.sounds and #current_table.props > 0) then
                 util.toast("Não é possivel adicionar um grupo dentro dessa ação")
                 return
             end
+            current_table.animations = nil
+            current_table.props = nil
+            current_table.particles = nil
+            current_table.sounds = nil
             editor_menu.add_action(action_table, index, parent_menu, path_name)
         elseif selected == 2 then -- animation
             if current_table.file_name or (current_table.actions and #current_table.actions > 0) then
@@ -725,16 +754,16 @@ function editor_menu.create_action_menus(action_table, parent_menu, path_name)
 end
 
 function editor.create_editor_interface()
-    if is_root_created then
-        root:delete()
-        menu.collect_garbage()
-    end
+    --if is_root_created then
+        --root:delete()
+        --menu.collect_garbage()
+    --end
 
-    is_root_created = true
+    --is_root_created = true
     root = menu.my_root():list(Translation.menu.name_editor, {}, Translation.menu.description_editor)
-    menu.my_root():action("Log table", {}, "", function ()
-        print_table(data.actions_files)
-    end)
+    --menu.my_root():action("Log table", {}, "", function ()
+    --    print_table(data.actions_files)
+    --end)
 
     root:action(Translation.menu.name_add_file, {}, "", function ()
         table.insert(data.actions_files, {file_name = "", actions = {}})
@@ -744,6 +773,8 @@ function editor.create_editor_interface()
     end)
 
     editor_menu.create_action_menus(data.actions_files, root, "root")
+
+    return root
 end
 
 return editor

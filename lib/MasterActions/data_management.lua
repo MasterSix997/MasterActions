@@ -1,8 +1,13 @@
 local json = require("pretty.json")
 
 local default_settings = {
+    version = "0.0.1",
     language = "pt-br",
-    dev_mode = true
+    dev_mode = true,
+    actions = {
+        separate_by_files = false,
+        create_default_commands = true,
+    }
 }
 
 local default_actions = {
@@ -123,7 +128,7 @@ function MasterData.LoadAllActions()
     for index, file in ipairs(filesystem.list_files(actions_folder)) do
         if not filesystem.is_dir(file) then
             local file_name = string.sub(file, #actions_folder + 1, #file - 5)
-            if string.sub(file, #file - 4, #file) == ".json" then
+            if string.sub(file, -5) == ".json" then
                 local file_actions = {file_name = file_name}
                 file_actions.actions = readFromFile("Actions\\" .. file_name .. ".json")
                 if file_actions.actions then
@@ -183,6 +188,19 @@ function MasterData.RenameActionFile(filename, new_name)
         end
     end
 end
+
+function MasterData.CreateActionsTable()
+    MasterData.actions = {}
+    for i, action_file in ipairs(MasterData.actions_files) do
+        if MasterData.settings.actions.separate_by_files then
+            table.insert(MasterData.actions, {name = action_file.file_name, actions = action_file.actions})
+        else
+            for action_i, action in ipairs(action_file.actions) do
+                table.insert(MasterData.actions, action)
+            end
+        end
+    end
+end
 --[[function MasterData.LoadData()
     if not CreateFileIfNeed("MasterActions.json", default_actions) then
         util.toast("Failed to create initial file")
@@ -201,11 +219,27 @@ function MasterData.SaveData()
     end
 end]]
 
+local function update_settings(current_settings, new_settings)
+    for key, value in pairs(new_settings) do
+        if type(value) == "table" then
+            --if type(current_settings[key]) ~= "table" then
+                --current_settings[key] = {}
+            --end
+            -- Chamada recursiva para lidar com subchaves
+            update_settings(current_settings[key], value)
+        else
+            current_settings[key] = value
+        end
+    end
+end
+
 function MasterData.LoadSettings()
     if not CreateFileIfNeed("Settings.json", default_settings) then
         util.toast("Failed to create initial file")
     end
-    MasterData.settings = readFromFile("Settings.json")
+    --MasterData.settings = readFromFile("Settings.json")
+    local settings_loaded = readFromFile("Settings.json")
+    update_settings(MasterData.settings, settings_loaded)
 end
 
 function MasterData.SaveSettings()
