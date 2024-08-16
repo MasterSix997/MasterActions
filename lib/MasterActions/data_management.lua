@@ -7,6 +7,38 @@ local default_settings = {
     actions = {
         separate_by_files = false,
         create_default_commands = true,
+    },
+    wheel = {
+        center_x = 0.5,
+        center_y = 0.5,
+        outer_radius = 0.1,
+        inner_radius = 0.01,
+        resolution = 24,
+        close_wheel_on_back_in_root = true,
+        close_wheel_on_play_action = true,
+        reset_wheel_menu_on_play_action = false,
+        close_wheel_on_outside_click = false,
+        select_even_outside_the_wheel = true,
+        reset_mouse_position_on_navigate = true,
+        disable_the_wheel_instead_of_returning = false,
+        key_input = {
+            master_control = 44,--171,
+            open_root = 22,
+            back = 202,
+            close = 199,
+            choose = 24,
+            next_page = 14,
+            previous_page = 15
+        },
+        gamepad_input = {
+            master_control = 44,
+            open_root = 47,
+            back = 202,
+            close = 200,
+            choose = 24,
+            next_page = 44,
+            previous_page = 37
+        }
     }
 }
 

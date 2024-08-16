@@ -1,6 +1,6 @@
 local editor = {}
 
-local function print_table(node)
+function editor.print_table(node)
     local cache, stack, output = {},{},{}
     local depth = 1
     local output_str = "{\n"

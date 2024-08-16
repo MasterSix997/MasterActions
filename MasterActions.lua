@@ -1,3 +1,4 @@
+util.require_natives("3095a")
 require("lib/MasterActions/translations")
 
 data = require("lib/MasterActions/data_management")
