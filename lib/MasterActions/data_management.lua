@@ -9,11 +9,6 @@ local default_settings = {
         create_default_commands = true,
     },
     wheel = {
-        center_x = 0.5,
-        center_y = 0.5,
-        outer_radius = 0.1,
-        inner_radius = 0.01,
-        resolution = 24,
         close_wheel_on_back_in_root = true,
         close_wheel_on_play_action = true,
         reset_wheel_menu_on_play_action = false,
@@ -38,6 +33,36 @@ local default_settings = {
             choose = 24,
             next_page = 44,
             previous_page = 37
+        },
+        style = {
+            center_x = 0.5,
+            center_y = 0.5,
+            outer_radius = 0.1,
+            inner_radius = 0.01,
+            circle_resolution = 24,
+            blur_force = 7,
+            sizes = {
+                border = 0.003,
+                stop_border = 0.003,
+                page_button = 0.03,
+                data_distance = 0.07,
+                text = 0.6,
+                texture = 0.01,
+                text_and_texture_distance = 0.01
+            },
+            colors = {
+                circle = {["r"] = 0, ["g"] = 0, ["b"] = 0, ["a"] = 0.5},
+                circle_divider = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 0.5},
+                wheel_text_out_focus = {["r"] = 1, ["g"] = 0.498, ["b"] = 0.6, ["a"] = 1},
+                text = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1},
+                selected_text = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1},
+                selected = {["r"] = 1, ["g"] = 0.0196, ["b"] = 0.2667, ["a"] = 0.6},
+                border = {["r"] = 0, ["g"] = 0, ["b"] = 0, ["a"] = 0.9},
+                selected_border = {["r"] = 1, ["g"] = 0.0196, ["b"] = 0.2667, ["a"] = 1},
+                stop = {["r"] = 1, ["g"] = 0.0196, ["b"] = 0.2667, ["a"] = 1},
+                stop_text = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1},
+                page_button = {["r"] = 0, ["g"] = 0, ["b"] = 0, ["a"] = 0.8},
+            }
         }
     }
 }

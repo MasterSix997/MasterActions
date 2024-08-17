@@ -1,7 +1,8 @@
 --util.require_natives("3095a")
-
 local wheel_nav = require("MasterActions.lib.MasterActions.WheelMenu.wheel_navigation")
 local wheel_render = require("MasterActions.lib.MasterActions.WheelMenu.wheel_render")
+local scaleform = require("ScaleformLib")
+local sf = scaleform('instructional_buttons')
 
 local default_settings = {
     close_wheel_on_back_in_root = true,
@@ -60,6 +61,22 @@ local default_settings = {
     }
 }
 
+local function scaleform_update(self, is_in_controller, binds)
+    sf.CLEAR_ALL()
+    sf.TOGGLE_MOUSE_BUTTONS(false)
+
+    sf.SET_DATA_SLOT(0, PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, binds.back, true), "Back")
+    sf.SET_DATA_SLOT(1, PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, binds.close, true), "Close")
+    sf.SET_DATA_SLOT(2, PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, binds.choose, true), "Choose")
+    sf.SET_DATA_SLOT(3, PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, binds.next_page, true), "Next Page")
+    sf.SET_DATA_SLOT(4, PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, binds.previous_page, true), "Previous Page")
+    if not self.settings.disable_the_wheel_instead_of_returning then
+        sf.SET_DATA_SLOT(5, PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, 25, true), "Back")
+    end
+    sf.DRAW_INSTRUCTIONAL_BUTTONS()
+    sf:draw_fullscreen()
+end
+
 local WheelMenu = {}
 WheelMenu.__index = WheelMenu
 
@@ -84,7 +101,10 @@ function WheelMenu:calculate_selected_slice()
     local is_in_controller = not PAD.IS_USING_KEYBOARD_AND_MOUSE(2)
 
     if is_in_controller then
-        self.selected_slice = wheel_render.slice_in_analog_position(#self.current_data)
+        local new_selected = wheel_render.slice_in_analog_position(#self.current_data)
+        if new_selected and new_selected > 0 then
+            self.selected_slice = new_selected
+        end
     else
         self.selected_slice = wheel_render.slice_in_mouse_position(
             self.settings.style.center_x,
@@ -229,6 +249,8 @@ function WheelMenu:update_tick()
         self.has_next_page_key_pressed = false
         self.has_previous_page_key_pressed = false
     end
+
+    --scaleform_update(self, is_in_controller, binds)
 
     wheel_render.draw_selected_description(self.current_data, self.selected_slice, self.settings.style.center_x, self.settings.style.center_y, self.settings.style.outer_radius + 0.01, 1, self.settings.style.colors.text)
 

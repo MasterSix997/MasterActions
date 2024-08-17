@@ -1,5 +1,7 @@
 local editor_ui = require("lib.MasterActions.ui_editor_mode")
 local wheel = require("MasterActions.lib.MasterActions.WheelMenu.wheel_menu")
+local scaleform = require("ScaleformLib")
+local sf = scaleform('instructional_buttons')
 
 local ui = {}
 local actions_ui = {}
@@ -7,9 +9,13 @@ local actions_ui = {}
 local is_created = false
 local settings_menu
 local editor_menu
-local misc_menu
+local utils_section = {utils_divider = {}, stop_textslider = {}, misc_menu = {}}
 
-local master_wheel
+local master_wheel = wheel.new()
+local input = {
+    master_control = false,
+    is_open_root_pressed = false,
+}
 
 local function create_settings_menu()
     settings_menu = menu.my_root():list(Translation.menu.name_settings, {}, "")
@@ -53,26 +59,30 @@ local function create_settings_menu()
         data.settings.dev_mode = value
         data.SaveSettings()
     end, data.settings.dev_mode)
-
-    settings_menu:toggle("Open wheel", {}, "", function(value)
-        if value then
-            wheel.open()
-        else
-            wheel.close()
-        end
-    end, false)
 end
 
-local function create_misk_menu()
-    menu:my_root():divider("Utils")
-    menu:my_root():textslider("Stop actions", {"actionstop"}, "", {"Normal", "Force"}, function (stop_mode)
+local function create_utils_menu()
+    utils_section.utils_divider = menu:my_root():divider("Utils")
+    utils_section.stop_textslider = menu:my_root():textslider("Stop actions", {"actionstop"}, "", {"Normal", "Force"}, function (stop_mode)
         if stop_mode == 1 then
             util.toast("Stop1")
         elseif stop_mode == 2 then
             util.toast("Stop2")
         end
     end)
-    misc_menu = menu:my_root():list("Misc", {"misc"}, "")
+
+    utils_section.misc_menu = menu:my_root():list("Misc", {"misc"}, "")
+    local misc = utils_section.misc_menu
+    misc:toggle("MasterControl", {"masteractcontrol"}, "", function (value)
+        input.master_control = value
+    end, false)
+    misc:toggle("Open Master Wheel", {}, "", function(value)
+        if value then
+            master_wheel:open()
+        else
+            master_wheel:close()
+        end
+    end, false)
 end
 
 function actions_ui.create_action_menu(actions_table, action_index, parent_menu, parent_wheel)
@@ -123,7 +133,7 @@ local function delete_menus(parent_menu, from, to)
     --if master_wheel.is_open() then
     master_wheel:close()
     --end
-    master_wheel.nav.root:focus(master_wheel.nav.root)
+    master_wheel.nav:focus(master_wheel.nav.root)
     master_wheel.nav.root.children = {}
 end
 
@@ -141,37 +151,63 @@ local function wheel_ui_update()
         binds = data.settings.wheel.gamepad_input
     end
 
-    local is_master_presed = false
-    if is_in_controller then
-        is_master_presed = PAD.IS_CONTROL_PRESSED(2, binds.master_control)
-    else
-        PAD.DISABLE_CONTROL_ACTION(2, binds.master_control, true)
-        is_master_presed = PAD.IS_DISABLED_CONTROL_PRESSED(2, binds.master_control)
+    local is_master_presed = input.master_control
+    if not is_master_presed then 
+        if is_in_controller then
+            is_master_presed = PAD.IS_CONTROL_PRESSED(2, binds.master_control)
+        else
+            PAD.DISABLE_CONTROL_ACTION(2, binds.master_control, true)
+            is_master_presed = PAD.IS_DISABLED_CONTROL_PRESSED(2, binds.master_control)
+        end
     end
 
     if is_master_presed then
         PAD.DISABLE_CONTROL_ACTION(2, binds.open_root, true)
         if PAD.IS_DISABLED_CONTROL_PRESSED(2, binds.open_root) then
-            master_wheel:open()
+            if not input.is_open_root_pressed then
+                master_wheel:open()
+            end
+            input.is_open_root_pressed = true
+        else
+            input.is_open_root_pressed = false
+        end
+        
+        local function scaleform_update()
+            sf.CLEAR_ALL()
+            sf.TOGGLE_MOUSE_BUTTONS(false)
+    
+            --sf.SET_DATA_SLOT(0,PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, 171, true) , "Master ")
+            sf.SET_DATA_SLOT(0, PAD.GET_CONTROL_INSTRUCTIONAL_BUTTONS_STRING(2, binds.open_root, true), "Open Menu")
+            sf.DRAW_INSTRUCTIONAL_BUTTONS()
+            sf:draw_fullscreen()
+        end
+        if not master_wheel.is_open then
+            scaleform_update()
         end
     end
+
 end
 
 function ui.create_interface()
     if is_created then
-        delete_menus(menu:my_root(), 4)
+        delete_menus(menu:my_root(), 6)
         settings_menu:delete()
         editor_menu:delete()
+        utils_section.utils_divider:delete()
+        utils_section.stop_textslider:delete()
+        utils_section.misc_menu:delete()
         menu.collect_garbage()
     else
         util.create_tick_handler(wheel_ui_update)
-        master_wheel = wheel.new()
+        master_wheel = wheel.new(data.settings.wheel)
     end
     
     is_created = true
 
     create_settings_menu()
     editor_menu = editor_ui.create_editor_interface()
+    create_utils_menu()
+
     data.CreateActionsTable()
     actions_ui.create_action_menus(data.actions, menu:my_root(), master_wheel.nav, "Groups")
 end

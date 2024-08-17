@@ -19,6 +19,7 @@ local default_style = {
     },
     colors = {
         text = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1},
+        wheel_text_out_focus = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1},
         selected_text = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1},
         circle = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 0.5},
         circle_divider = {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 0.5},
@@ -154,32 +155,54 @@ local function draw_slice_type(center_x, center_y, size, radius, total_slices, s
     local x = center_x + radius * math.cos(mid_angle)
     local y = center_y + radius * math.sin(mid_angle) * aspect_ratio
 
-    color = color or {["r"] = 1.0, ["g"] = 1.0, ["b"] = 1.0, ["a"] = 0.6}
+    color["a"] = 0.6
     directx.draw_circle_client(x, y, size, color, -1)
     directx.draw_line_client(x, y, center_x, center_y, color)
 end
 
-local function draw_data_in_slices(center_x, center_y, radius, total_slices, data, style)
+local function draw_data_in_slices(center_x, center_y, radius, total_slices, data, highlight_index, style)
     for i = 1, total_slices do
+        
         if data[i].drawMode == 0 then
-            draw_text_in_slice(data[i].text, center_x, center_y, radius, total_slices, i, data[i].textSettings.scale or style.sizes.text, data[i].textSettings.color or style.colors.text, data[i].textSettings.font)
+            local color = data[i].textSettings.color or style.colors.wheel_text_out_focus
+            local scale = data[i].textSettings.scale or style.sizes.text
+            if highlight_index == i then
+                color = style.colors.selected_text
+            end
+
+            draw_text_in_slice(data[i].text, center_x, center_y, radius, total_slices, i, scale, color, data[i].textSettings.font)
 
         elseif data[i].drawMode == 1 then
             if directx.has_texture_loaded(loaded_textures[data[i].textureSettings.path]) then
-                draw_texture_in_slice(loaded_textures[data[i].textureSettings.path], center_x, center_y, radius, total_slices, i, data[i].textureSettings.scale or style.sizes.texture, data[i].textureSettings.color or {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1})
+                local color = data[i].textureSettings.color or {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1}
+                local scale = data[i].textureSettings.scale or style.sizes.texture
+                draw_texture_in_slice(loaded_textures[data[i].textureSettings.path], center_x, center_y, radius, total_slices, i, scale, color)
             else
                 draw_text_in_slice("Loading Texture: ", center_x, center_y, radius, total_slices, i, style.sizes.text, {["r"] = 1, ["g"] = 1, ["b"] = 0, ["a"] = 1})
             end
 
         elseif data[i].drawMode == 2 then
-            draw_text_in_slice(data[i].text, center_x, center_y, radius - style.sizes.text_and_texture_distance, total_slices, i, data[i].textSettings.scale or style.sizes.text, data[i].textSettings.color or style.colors.text, data[i].textSettings.font)
+            local text_color = data[i].textSettings.color or style.colors.wheel_text_out_focus
+            local text_scale = data[i].textSettings.scale or style.sizes.text
+            if highlight_index == i then
+                text_color = style.colors.selected_text
+            end
+            local texture_color = data[i].textureSettings.color or {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1}
+            local texture_scale = data[i].textureSettings.scale or style.sizes.texture
+
+            draw_text_in_slice(data[i].text, center_x, center_y, radius - style.sizes.text_and_texture_distance, total_slices, i, text_scale, text_color, data[i].textSettings.font)
             if directx.has_texture_loaded(loaded_textures[data[i].textureSettings.path]) then
-                draw_texture_in_slice(loaded_textures[data[i].textureSettings.path], center_x, center_y, radius + style.sizes.text_and_texture_distance, total_slices, i, data[i].textureSettings.scale or style.sizes.texture, data[i].textureSettings.color or {["r"] = 1, ["g"] = 1, ["b"] = 1, ["a"] = 1})
+                draw_texture_in_slice(loaded_textures[data[i].textureSettings.path], center_x, center_y, radius + style.sizes.text_and_texture_distance, total_slices, i, texture_scale, texture_color)
             end
         end
 
         if #data[i].children > 0 then
-            draw_slice_type(center_y, center_y, 0.005, radius / 2, total_slices, i, data[i].textColor)
+            local color = data[i].textSettings.color or style.colors.wheel_text_out_focus
+            if highlight_index == i then
+                color = style.colors.selected_text
+            end
+
+            draw_slice_type(center_y, center_y, 0.005, radius / 2, total_slices, i, color)
         end
     end
 end
@@ -208,7 +231,7 @@ function WheelRender.draw_wheel_menu(data, selected_slice, style)
         draw_circle_slice(style.center_x, style.center_y, style.outer_radius, style.inner_radius, math.ceil(style.circle_resolution / slices), slices, selected_slice, style.colors.selected)
     end
 
-    draw_data_in_slices(style.center_x, style.center_y, style.sizes.data_distance, slices, data, style)
+    draw_data_in_slices(style.center_x, style.center_y, style.sizes.data_distance, slices, data, selected_slice, style)
 
     -- wheel border
     draw_sliced_circle(
@@ -227,7 +250,7 @@ function WheelRender.draw_wheel_menu(data, selected_slice, style)
 
     -- selected stop circle
     if selected_slice == 0 then
-        draw_circle(style.center_x, style.center_y, style.sizes.stop_border, 0, style.circle_resolution, style.colors.selected)
+        draw_circle(style.center_x, style.center_y, style.inner_radius + style.sizes.stop_border, 0, style.circle_resolution, style.colors.selected)
     end
     -- stop circle
     draw_circle(style.center_x, style.center_y, style.inner_radius, 0, style.circle_resolution, style.colors.stop)
