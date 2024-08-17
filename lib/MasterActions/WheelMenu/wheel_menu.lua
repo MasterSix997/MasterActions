@@ -87,6 +87,8 @@ function WheelMenu:new(settings)
     instance.is_open = false
     instance.current_data = {}
     instance.selected_slice = nil
+    instance.onStopCallbacks = nil
+
     instance.is_looking_pressed = false
     instance.mouse_pos_before_look = {x = 0, y = 0}
     instance.has_back_key_pressed = false
@@ -278,12 +280,17 @@ function WheelMenu:select_current()
             self:close()
         end
     elseif self.selected_slice == 0 then
+        if self.onStopCallbacks then
+            for _, callback in ipairs(self.onStopCallbacks) do
+                callback()
+            end
+        end
+
         self:close()
     else
         self.nav:enter(nil, function (action_menu)
             if self.settings.close_wheel_on_play_action then
                 self:close()
-                util.toast("Play action: " .. action_menu.name)
             end
             if self.settings.reset_wheel_menu_on_play_action then
                 self.nav:focus(self.nav.root)
@@ -309,6 +316,12 @@ end
 function WheelMenu:create_textures()
     wheel_render.create_textures(self.nav.root.children)
 end
+
+function WheelMenu:onStopClicked(callback)
+    self.onStopCallbacks = self.onStopCallbacks or {}
+    table.insert(self.onStopCallbacks, callback)
+end
+
 return {
     new = function(settings)
         return WheelMenu:new(settings)

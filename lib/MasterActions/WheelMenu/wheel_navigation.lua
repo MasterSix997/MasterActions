@@ -18,6 +18,7 @@ function MenuItem:new(name, description, parent)
     instance.selectedIndex = 1
     instance.currentPage = 1
     instance.isFolder = true
+    instance.onEnterCallbacks = nil
 
     instance.text = name
     instance.drawMode = 0
@@ -36,6 +37,12 @@ function MenuItem:enter(index, onEnterAction)
     index = index + ((self.currentPage - 1) * MAX_ITEMS_PER_PAGE)
     local child = self.children[index]
     if child then
+        if child.onEnterCallbacks then
+            for _, callback in ipairs(child.onEnterCallbacks) do
+                callback()
+            end
+        end
+        
         if #child.children > 0 then
             return child
         elseif onEnterAction then
@@ -65,6 +72,11 @@ end
 
 function MenuItem:pageItemsCount()
     return #self:pageItems()
+end
+
+function MenuItem:onEnter(callback)
+    self.onEnterCallbacks = self.onEnterCallbacks or {}
+    table.insert(self.onEnterCallbacks, callback)
 end
 
 local MenuManager = {}

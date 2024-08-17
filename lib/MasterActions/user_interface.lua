@@ -11,6 +11,8 @@ local settings_menu
 local editor_menu
 local utils_section = {utils_divider = {}, stop_textslider = {}, misc_menu = {}}
 
+local start_action_callback
+local stop_action_callback
 local master_wheel = wheel.new()
 local input = {
     master_control = false,
@@ -65,9 +67,9 @@ local function create_utils_menu()
     utils_section.utils_divider = menu:my_root():divider("Utils")
     utils_section.stop_textslider = menu:my_root():textslider("Stop actions", {"actionstop"}, "", {"Normal", "Force"}, function (stop_mode)
         if stop_mode == 1 then
-            util.toast("Stop1")
+            stop_action_callback()
         elseif stop_mode == 2 then
-            util.toast("Stop2")
+            stop_action_callback(true)
         end
     end)
 
@@ -104,11 +106,13 @@ function actions_ui.create_action_menu(actions_table, action_index, parent_menu,
         end
 
         parent_menu:action(name, command, "", function ()
-            util.toast("Execute action: " ..name)
+            start_action_callback(current_action)
         end)
 
         -- wheel
-        parent_wheel:addMenu(name)
+        parent_wheel:addMenu(name):onEnter(function ()
+            start_action_callback(current_action)
+        end)
     end
 end
 
@@ -188,7 +192,7 @@ local function wheel_ui_update()
 
 end
 
-function ui.create_interface()
+function ui.create_interface(start_action, stop_action)
     if is_created then
         delete_menus(menu:my_root(), 6)
         settings_menu:delete()
@@ -198,8 +202,13 @@ function ui.create_interface()
         utils_section.misc_menu:delete()
         menu.collect_garbage()
     else
+        start_action_callback = start_action
+        stop_action_callback = stop_action
         util.create_tick_handler(wheel_ui_update)
         master_wheel = wheel.new(data.settings.wheel)
+        master_wheel:onStopClicked(function ()
+            stop_action_callback()
+        end)
     end
     
     is_created = true

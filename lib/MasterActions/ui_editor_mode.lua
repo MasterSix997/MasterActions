@@ -124,7 +124,7 @@ end
 -- Menu Utils
 
 function editor_menu.add_animation(action_table, index, parent_menu, path_name, default_value)
-    default_value = default_value or {dict = "", name = "", blendin = 4.2, blendout = 4.2, duration = -1, play_back = 0, flag = 0, additive = false, require_force_stop = false}
+    default_value = default_value or {dict = "", anim = "", blendin = 4.2, blendout = -4.2, duration = -1, playback = 0, flag = 0, additive = false, require_force_stop = false}
     local current_table = action_table[index]
     current_table.animations = current_table.animations or {}
     table.insert(current_table.animations, default_value)
@@ -146,7 +146,7 @@ function editor_menu.add_prop(action_table, index, parent_menu, path_name, defau
 end
 
 function editor_menu.add_effect(action_table, index, parent_menu, path_name, default_value)
-    default_value = default_value or {effect_asset = "", effect_name = "", attached = false, boneID = 31086, posX = 0, posY = 0, posZ = 0, rotX = 0, rotY = 0, rotZ = 0, additive = false, require_force_stop = false}
+    default_value = default_value or {effect_asset = "", effect_name = "", attached = false, boneID = 31086, posX = 0, posY = 0, posZ = 0, rotX = 0, rotY = 0, rotZ = 0, scale = 1, additive = false, require_force_stop = false}
     local current_table = action_table[index]
     current_table.effects = current_table.effects or {}
     table.insert(current_table.effects, default_value)
@@ -373,8 +373,18 @@ function editor_menu.create_animation_menu(animations_table, animation_index, ac
     local animation_path = path_name .. "." .. animation_index
     local animation_menu = parent_menu:list("")
 
+    animation.dict = animation.dict or ""
+    animation.anim = animation.anim or ""
+    animation.blendin = animation.blendin or 4.2
+    animation.blendout = animation.blendout or -4.2
+    animation.duration = animation.duration or -1
+    animation.playback = animation.playback or 0
+    animation.flag = animation.flag or 0
+    animation.additive = animation.additive or false
+    animation.require_force_stop = animation.require_force_stop or false
+
     local function update_menu_name()
-        animation_menu.menu_name = "(" .. Translation.menu.name_animation .. ") " .. animation.dict .. ":" .. animation.name
+        animation_menu.menu_name = "(" .. Translation.menu.name_animation .. ") " .. animation.dict .. ":" .. animation.anim
     end
     update_menu_name()
 
@@ -384,20 +394,20 @@ function editor_menu.create_animation_menu(animations_table, animation_index, ac
 
         update_menu_name()
     end, animation.dict)
-    local animation_name_field = animation_menu:text_input("Name", {animation_path .. "name"}, "", function (new_name)
-        animation.name = new_name
+    local animation_name_field = animation_menu:text_input("Anim", {animation_path .. "anim"}, "", function (new_anim)
+        animation.anim = new_anim
         save_to_current_file()
 
         update_menu_name()
-    end, animation.name)
+    end, animation.anim)
 
-    local blendin_slider = animation_menu:click_slider_float(Translation.menu.name_animation_blendin, {}, "", 1, 10000, animation.blendin * 1000, 100, function (value)
+    local blendin_slider = animation_menu:click_slider_float(Translation.menu.name_animation_blendin, {}, "", -10000, 10000, animation.blendin * 1000, 100, function (value)
         animation.blendin = value / 1000
         save_to_current_file()
     end)
     blendin_slider.precision = 3
 
-    local blendout_slider = animation_menu:click_slider_float(Translation.menu.name_animation_blendout, {}, "", 1, 10000, animation.blendout * 1000, 100, function (value)
+    local blendout_slider = animation_menu:click_slider_float(Translation.menu.name_animation_blendout, {}, "", -10000, 10000, animation.blendout * 1000, 100, function (value)
         animation.blendout = value / 1000
         save_to_current_file()
     end)
@@ -408,8 +418,8 @@ function editor_menu.create_animation_menu(animations_table, animation_index, ac
         save_to_current_file()
     end)
 
-    local play_back_slider = animation_menu:click_slider_float(Translation.menu.name_animation_play_back_rate, {}, "", 0, 1000, animation.play_back * 100, 100, function (value)
-        animation.play_back = value / 100
+    local play_back_slider = animation_menu:click_slider_float(Translation.menu.name_animation_play_back_rate, {}, "", 0, 1000, animation.playback * 100, 100, function (value)
+        animation.playback = value / 100
         save_to_current_file()
     end)
 
@@ -499,6 +509,14 @@ end
 function editor_menu.create_transform_handle(root_table, parent_menu)
     local pos_name = Translation.menu.name_position
     local rot_name = Translation.menu.name_rotation
+
+    root_table.posX = root_table.posX or 0
+    root_table.posY = root_table.posY or 0
+    root_table.posZ = root_table.posZ or 0
+    root_table.rotX = root_table.rotX or 0
+    root_table.rotY = root_table.rotY or 0
+    root_table.rotZ = root_table.rotZ or 0
+
     parent_menu:slider_float(pos_name .. "X", {}, "", -9999999, 9999999, root_table.posX * 100, 1, function (value)
         root_table.posX = value / 100
         save_to_current_file()
@@ -530,6 +548,12 @@ function editor_menu.create_prop_menu(props_table, prop_index, action_table, act
     local prop = props_table[prop_index]
     local prop_path = path_name .. "." .. prop_index
     local prop_menu = parent_menu:list("")
+
+    prop.prop = prop.prop or 0
+    prop.attached = prop.attached or false
+    prop.boneID = prop.boneID or 31086
+    prop.additive = prop.additive or false
+    prop.require_force_stop = prop.require_force_stop or false
 
     local function update_menu_name()
         prop_menu.menu_name = "(" .. Translation.menu.name_prop .. ") " .. util.reverse_joaat(prop.prop)
@@ -607,6 +631,14 @@ function editor_menu.create_effect_menu(effects_table, effect_index, action_tabl
     local effect_path = path_name .. "." .. effect_index
     local effect_menu = parent_menu:list("")
 
+    effect.effect_asset = effect.effect_asset or ""
+    effect.effect_name = effect.effect_name or ""
+    effect.attached = effect.attached or false
+    effect.boneID = effect.boneID or 31086
+    effect.scale = effect.scale or 1
+    effect.additive = effect.additive or false
+    effect.require_force_stop = effect.require_force_stop or false
+
     local function update_menu_name()
         effect_menu.menu_name = "(" .. Translation.menu.name_effect .. ") " .. effect.effect_asset .. ":" .. effect.effect_name
     end
@@ -658,6 +690,11 @@ function editor_menu.create_effect_menu(effects_table, effect_index, action_tabl
         save_to_current_file()
     end)
 
+    effect_menu:click_slider_float(Translation.menu.name_animation_blendin, {}, "", -1000, 1000, effect.scale * 100, 10, function (value)
+        effect.scale = value / 100
+        save_to_current_file()
+    end)
+
     effect_menu:toggle(Translation.menu.name_additive, {}, Translation.menu.description_additive, function(value)
         effect.additive = value
         save_to_current_file()
@@ -681,6 +718,11 @@ function editor_menu.create_sound_menu(sounds_table, sound_index, action_table, 
     local sound = sounds_table[sound_index]
     local sound_path = path_name .. "." .. sound_index
     local sound_menu = parent_menu:list("")
+
+    sound.sound_set = sound.sound_set or ""
+    sound.sound_name = sound.sound_name or ""
+    sound.additive = sound.additive or false
+    sound.require_force_stop = sound.require_force_stop or false
 
     local function update_menu_name()
         sound_menu.menu_name = "(" .. Translation.menu.name_sound .. ") " .. sound.sound_set .. ":" .. sound.sound_name
