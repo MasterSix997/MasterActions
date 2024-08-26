@@ -202,7 +202,7 @@ local function draw_data_in_slices(center_x, center_y, radius, total_slices, dat
                 color = style.colors.selected_text
             end
 
-            draw_slice_type(center_y, center_y, 0.005, radius / 2, total_slices, i, color)
+            draw_slice_type(center_x, center_y, 0.005, radius / 2, total_slices, i, color)
         end
     end
 end

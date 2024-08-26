@@ -365,3 +365,163 @@ util.on_pre_stop(function()
 end)
 
 ui.create_interface(start_action, cleanup)
+
+local ped_preview = {
+    enabled=true,
+    preset_name="PAUSE_SINGLE_LEFT",
+    preset_slot=0,
+    pos={
+        x=0.0,
+        y=-1.0,
+        z=0.0,
+    },
+    ped_handle = nil
+}
+local function draw_ped_preview()
+    if not ped_preview.enabled or not ped_preview.ped_handle or not ENTITY.DOES_ENTITY_EXIST(ped_preview.ped_handle) then return false end
+
+    local function get_offset_from_camera(distance)
+        local function rotation_to_direction(rotation)
+            local adjusted_rotation =
+            {
+                x = (math.pi / 180) * rotation.x,
+                y = (math.pi / 180) * rotation.y,
+                z = (math.pi / 180) * rotation.z
+            }
+            local direction =
+            {
+                x = -math.sin(adjusted_rotation.z) * math.abs(math.cos(adjusted_rotation.x)),
+                y =  math.cos(adjusted_rotation.z) * math.abs(math.cos(adjusted_rotation.x)),
+                z =  math.sin(adjusted_rotation.x)
+            }
+            return direction
+        end
+
+        if type(distance) ~= "table" then
+            distance = {x=distance, y=distance, z=distance}
+        end
+        local cam_rot = CAM.GET_FINAL_RENDERED_CAM_ROT(0)
+        local cam_pos = CAM.GET_FINAL_RENDERED_CAM_COORD()
+        local direction = rotation_to_direction(cam_rot)
+        local destination = {
+            x = cam_pos.x + (direction.x * distance.x),
+            y = cam_pos.y + (direction.y * distance.y),
+            z = cam_pos.z + (direction.z * distance.z)
+        }
+        return destination
+    end
+    local camera_coords = get_offset_from_camera(5)
+    local player_ped = PLAYER.PLAYER_PED_ID()
+    local player_coords = ENTITY.GET_ENTITY_COORDS(player_ped)
+    ENTITY.SET_ENTITY_COORDS(ped_preview.ped_handle, player_coords.x, player_coords.y, player_coords.z - 0.5, false, false, false, false)
+    ENTITY.SET_ENTITY_VISIBLE(player_ped, false, false)
+
+    if GRAPHICS.UI3DSCENE_IS_AVAILABLE() then
+        if GRAPHICS.UI3DSCENE_PUSH_PRESET(ped_preview.preset_name) then
+            GRAPHICS.UI3DSCENE_ASSIGN_PED_TO_SLOT(
+                ped_preview.preset_name, ped_preview.ped_handle, ped_preview.preset_slot,
+                ped_preview.pos.x, ped_preview.pos.y, ped_preview.pos.z
+            )
+            GRAPHICS.UI3DSCENE_MAKE_PUSHED_PRESET_PERSISTENT()
+            GRAPHICS.UI3DSCENE_CLEAR_PATCHED_DATA()
+        end
+    end
+end
+local function spawn_ped_for_preview()
+    local player_ped = PLAYER.PLAYER_PED_ID()
+    local player_coords = ENTITY.GET_ENTITY_COORDS(player_ped)
+    ENTITY.SET_ENTITY_VISIBLE(player_ped, false, false)
+    
+    -- Spawning a ped at the player's position
+    --ped_preview.ped_handle = player_ped--PED.CREATE_PED(1, util.joaat("MP_F_Freemode_01"), player_coords.x, player_coords.y, player_coords.z, 1.0, false, false)
+    --ped_preview.ped_handle = entities.create_ped(4, 1885233650, player_coords, 0)
+    local hash = util.joaat("MP_F_Freemode_01") -- A_F_Y_Beach_01, 
+    local function request_model_load(hash)
+        local request_time = os.time()
+        if not STREAMING.IS_MODEL_VALID(hash) then
+            util.toast("Invalid model")
+            return
+        end
+        STREAMING.REQUEST_MODEL(hash)
+        while not STREAMING.HAS_MODEL_LOADED(hash) do
+            if os.time() - request_time >= 10 then
+                break
+            end
+            util.yield()
+        end
+    end
+    --ped_preview.ped_handle = entities.create_ped(6, hash, player_coords, 90.0)
+    --ped_preview.ped_handle = PED.CREATE_PED(6, hash, player_coords.x, player_coords.y, player_coords.z, 90.0, false, false)
+    --ped_preview.ped_handle = PED.CREATE_RANDOM_PED(player_coords.x, player_coords.y, player_coords.z)
+    ped_preview.ped_handle = PED.CLONE_PED(player_ped, false, false, false)
+    --ENTITY.SET_ENTITY_VISIBLE(ped_preview.ped_handle, false, false)
+    ENTITY.SET_ENTITY_COLLISION(ped_preview.ped_handle, false, false)
+    ENTITY.SET_ENTITY_CAN_BE_DAMAGED(ped_preview.ped_handle, false)
+    ENTITY.FREEZE_ENTITY_POSITION(ped_preview.ped_handle, true)
+    ENTITY.SET_ENTITY_ALPHA(ped_preview.ped_handle, 255, false)
+
+    local function get_offset_from_camera(distance)
+        local function rotation_to_direction(rotation)
+            local adjusted_rotation =
+            {
+                x = (math.pi / 180) * rotation.x,
+                y = (math.pi / 180) * rotation.y,
+                z = (math.pi / 180) * rotation.z
+            }
+            local direction =
+            {
+                x = -math.sin(adjusted_rotation.z) * math.abs(math.cos(adjusted_rotation.x)),
+                y =  math.cos(adjusted_rotation.z) * math.abs(math.cos(adjusted_rotation.x)),
+                z =  math.sin(adjusted_rotation.x)
+            }
+            return direction
+        end
+
+        if type(distance) ~= "table" then
+            distance = {x=distance, y=distance, z=distance}
+        end
+        local cam_rot = CAM.GET_FINAL_RENDERED_CAM_ROT(0)
+        local cam_pos = CAM.GET_FINAL_RENDERED_CAM_COORD()
+        local direction = rotation_to_direction(cam_rot)
+        local destination = {
+            x = cam_pos.x + (direction.x * distance.x),
+            y = cam_pos.y + (direction.y * distance.y),
+            z = cam_pos.z + (direction.z * distance.z)
+        }
+        return destination
+    end
+    --local camera_coords = get_offset_from_camera(5)
+    ENTITY.SET_ENTITY_COORDS(ped_preview.ped_handle, player_coords.x, player_coords.y, player_coords.z, false, false, false, false)
+    --ENTITY.SET_PED_AS_NO_LONGER_NEEDED(ped_preview.ped_handle)
+    STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(hash)
+    -- Set the ped as invincible
+    --ENTITY.SET_ENTITY_INVINCIBLE(ped_preview.ped_handle, true)
+
+    local dict = "anim@amb@nightclub@dancers@podium_dancers@"
+    local anim = "hi_dance_facedj_17_v2_male^5"
+    STREAMING.REQUEST_ANIM_DICT(dict)
+    while not STREAMING.HAS_ANIM_DICT_LOADED(dict) do
+        util.yield()
+    end
+
+    TASK.TASK_PLAY_ANIM(ped_preview.ped_handle, dict, anim, 4.2, -4.2, -1, 1, 1, false, false, false)
+end
+
+local function remove_ped_preview()
+    if ped_preview.ped_handle and ENTITY.DOES_ENTITY_EXIST(ped_preview.ped_handle) then
+        entities.delete(ped_preview.ped_handle)
+        ped_preview.ped_handle = nil
+    end
+    ENTITY.SET_ENTITY_VISIBLE(PLAYER.PLAYER_PED_ID(), true, false)
+end
+
+menu:my_root():list("Spawn ped", {}, "", function ()
+    -- on enter
+    spawn_ped_for_preview()
+    ped_preview.enabled = true
+    util.create_tick_handler(draw_ped_preview)
+end, function ()
+    -- on back
+    remove_ped_preview()
+    ped_preview.enabled = false
+end)

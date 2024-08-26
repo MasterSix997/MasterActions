@@ -1,4 +1,5 @@
 local json = require("pretty.json")
+local dkjson = require("test_json")
 
 local default_settings = {
     version = "0.0.1",
@@ -103,7 +104,7 @@ local default_actions = {
     }
 }
 
-local default_folder = filesystem.store_dir() .. "\\MasterActions\\"
+local default_folder = filesystem.store_dir() .. "MasterActions\\"
 local actions_folder = default_folder .. "Actions\\"
 
 local MasterData = {}
@@ -159,6 +160,16 @@ local function readFromFile(filename)
     local content = file:read("*all")
     file:close()
     return json.parse(content)
+end
+
+local function readFromLargeFile(filename)
+    local file, _ = io.open(default_folder .. filename, "r")
+    if file == nil then
+      return nil
+    end
+    local content = file:read("*all")
+    file:close()
+    return dkjson.decode(content)
 end
 
 local function CreateFileIfNeed(filename, default_data)
@@ -275,6 +286,9 @@ function MasterData.SaveData()
     else
     end
 end]]
+function MasterData.LoadDumpFile(filename)
+    return readFromLargeFile("Dumps\\" ..filename)
+end
 
 local function update_settings(current_settings, new_settings)
     for key, value in pairs(new_settings) do

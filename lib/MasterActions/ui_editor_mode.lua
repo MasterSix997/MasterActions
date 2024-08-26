@@ -80,7 +80,6 @@ function editor.print_table(node)
 end
 
 local root
-local is_root_created = false
 
 local editor_menu = {}
 
@@ -284,6 +283,131 @@ function editor_menu.rename_action(action_table, index, parent_menu, new_name, p
 end
 
 -- Menu creation
+
+editor_menu.animation_dump_menu = {}
+
+function editor_menu.create_data_dump_selection()
+    local animations_dump = data.LoadDumpFile("animDictsCompact.json")
+    if not animations_dump then
+        return
+    end
+
+    local ped_preview = {
+        enabled=true,
+        preset_name="PAUSE_SINGLE_LEFT",
+        preset_slot=0,
+        pos={
+            x=0.0,
+            y=-1.0,
+            z=0.0,
+        },
+        ped_handle = nil
+    }
+    local function draw_ped_preview()
+        if not ped_preview.enabled or not ped_preview.ped_handle or not ENTITY.DOES_ENTITY_EXIST(ped_preview.ped_handle) then return false end
+        if GRAPHICS.UI3DSCENE_IS_AVAILABLE() then
+            if GRAPHICS.UI3DSCENE_PUSH_PRESET(ped_preview.preset_name) then
+                GRAPHICS.UI3DSCENE_ASSIGN_PED_TO_SLOT(
+                    ped_preview.preset_name, ped_preview.ped_handle, ped_preview.preset_slot,
+                    ped_preview.pos.x, ped_preview.pos.y, ped_preview.pos.z
+                )
+                GRAPHICS.UI3DSCENE_MAKE_PUSHED_PRESET_PERSISTENT()
+                GRAPHICS.UI3DSCENE_CLEAR_PATCHED_DATA()
+            end
+        end
+    end
+    local function spawn_ped_for_preview()
+        local player_ped = PLAYER.PLAYER_PED_ID()
+        local player_coords = ENTITY.GET_ENTITY_COORDS(player_ped)
+        
+        ped_preview.ped_handle = PED.CLONE_PED(player_ped, false, false, false)
+        --ENTITY.SET_ENTITY_VISIBLE(ped_preview.ped_handle, false, false)
+        ENTITY.SET_ENTITY_COLLISION(ped_preview.ped_handle, false, false)
+        ENTITY.SET_ENTITY_CAN_BE_DAMAGED(ped_preview.ped_handle, false)
+        ENTITY.FREEZE_ENTITY_POSITION(ped_preview.ped_handle, true)
+        ENTITY.SET_ENTITY_COORDS(ped_preview.ped_handle, player_coords.x, player_coords.y, player_coords.z, false, false, false, false)
+        ENTITY.SET_ENTITY_ALPHA(ped_preview.ped_handle, 255, false)
+        --ENTITY.SET_ENTITY_INVINCIBLE(ped_preview.ped_handle, true)
+    end
+    
+    local function remove_ped_preview()
+        if ped_preview.ped_handle and ENTITY.DOES_ENTITY_EXIST(ped_preview.ped_handle) then
+            entities.delete(ped_preview.ped_handle)
+            ped_preview.ped_handle = nil
+        end
+    end
+
+    local function play_animation_preview(dict, anim)
+        STREAMING.REQUEST_ANIM_DICT(dict)
+        while not STREAMING.HAS_ANIM_DICT_LOADED(dict) do
+            util.yield()
+        end
+
+        TASK.TASK_PLAY_ANIM(ped_preview.ped_handle, dict, anim, 4.2, -4.2, -1, 1, 0, false, false, false)
+
+        --STREAMING.REMOVE_ANIM_DICT(dict)
+    end
+
+    editor_menu.animation_dump_menu = root:list("Animations", {}, "", function ()
+        -- on enter
+        spawn_ped_for_preview()
+        ped_preview.enabled = true
+        util.create_tick_handler(draw_ped_preview)
+    end, function ()
+        -- on back
+        ped_preview.enabled = false
+        remove_ped_preview()
+    end)
+
+    local function create_menus(dict_table, parent_menu)
+        if not dict_table or #dict_table < 1 then
+            return
+        end
+        for dict_index, dict in ipairs(dict_table) do
+            local dict_menu = parent_menu:list(dict.DictionaryName, {}, "", function () end, function () end, function ()
+
+                -- on update (when navigate up/down)
+                -- run selected animation
+            end)
+
+            for anim_index, animation in ipairs(dict.Animations) do
+                dict_menu:action(animation, {}, "", function ()
+                    util.toast(animation)
+                    play_animation_preview(dict.DictionaryName, animation)
+                end)
+            end
+        end
+    end
+
+    local function search_menu(parent_menu)
+        local search_command = "search_animations"
+        --local search_menu = editor_menu.animation_dump_menu:list("Search", {}, "Search for dictionaries and animations", function() menu.show_command_box(search_command .. " ") end)
+        parent_menu:text_input("Search", {search_command}, "", function(query)
+            editor_menu.delete_menus(editor_menu.animation_dump_menu, 2)
+            local function search_items()
+                local results = {}
+                for _, dict in ipairs(animations_dump) do
+                    if string.match(dict.DictionaryName, query:lower()) then
+                        table.insert(results, dict)
+
+                        else
+                            for _, anim in ipairs(dict.Animations) do
+                                if string.match(anim, query:lower()) then
+                                    table.insert(results, dict)
+                                    break
+                                end
+                            end
+                    end
+                end
+                return results
+            end
+            create_menus(search_items(), editor_menu.animation_dump_menu)
+        end)
+    end
+
+    search_menu(editor_menu.animation_dump_menu)
+    create_menus(animations_dump,  editor_menu.animation_dump_menu)
+end
 
 function editor_menu.create_add_action_textslider(action_table, index, parent_menu, path_name)
     local options = {Translation.menu.name_group, Translation.menu.name_animation, Translation.menu.name_prop, Translation.menu.name_effect, Translation.menu.name_sound}
@@ -795,18 +919,7 @@ function editor_menu.create_action_menus(action_table, parent_menu, path_name)
     end
 end
 
-function editor.create_editor_interface()
-    --if is_root_created then
-        --root:delete()
-        --menu.collect_garbage()
-    --end
-
-    --is_root_created = true
-    root = menu.my_root():list(Translation.menu.name_editor, {}, Translation.menu.description_editor)
-    --menu.my_root():action("Log table", {}, "", function ()
-    --    print_table(data.actions_files)
-    --end)
-
+local function create_editor_menu()
     root:action(Translation.menu.name_add_file, {}, "", function ()
         table.insert(data.actions_files, {file_name = "", actions = {}})
         data.actions_files[#data.actions_files].file_name = get_valid_name(data.actions_files, "New Actions")
@@ -815,6 +928,20 @@ function editor.create_editor_interface()
     end)
 
     editor_menu.create_action_menus(data.actions_files, root, "root")
+
+    editor_menu.create_data_dump_selection()
+end
+
+
+function editor.create_editor_interface()
+    local is_editor_created = false
+    root = menu.my_root():list(Translation.menu.name_editor, {}, Translation.menu.description_editor, function ()
+        if not is_editor_created then
+            create_editor_menu()
+
+            is_editor_created = true
+        end
+    end)
 
     return root
 end
